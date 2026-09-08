@@ -9,6 +9,7 @@ import { Tmux } from "./tmux.js";
 import { SessionService } from "./sessions.js";
 import { attachTerminal, clampSize } from "./terminal.js";
 import { isValidSessionId } from "./validate.js";
+import { listExternalClaudes } from "./external.js";
 
 function tokenMatches(expected: string, given: unknown): boolean {
   if (typeof given !== "string") return false;
@@ -65,6 +66,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     await sessions.remove(req.params.id);
     return reply.code(204).send();
   });
+
+  // Claude Code processes running in ordinary terminals (not in tmux). Shown read-only in the UI.
+  app.get("/api/external", async () => listExternalClaudes(tmux));
 
   app.get("/api/config", async () => ({
     allowedDirectories: config.allowedDirectories,

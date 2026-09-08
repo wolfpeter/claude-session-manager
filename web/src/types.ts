@@ -14,3 +14,12 @@ export interface AppConfig {
   allowedDirectories: string[];
   sessionPrefix: string;
 }
+
+/** Claude Code process outside tmux: visible, but no terminal can be attached to it. */
+export interface ExternalClaude {
+  pid: number;
+  tty: string;
+  workingDirectory: string;
+  uptimeSeconds: number;
+  args: string;
+}

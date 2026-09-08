@@ -17,6 +17,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
 - Stop button ends the tmux session only. Project files are never touched.
+- Claude Code processes started in ordinary terminals (outside tmux) are listed too, read-only: the browser cannot attach to them, but you see where they run and for how long.
 - No database: tmux is the source of truth. Session names are stored as a tmux option on the session itself.
 - Runs as a systemd service under your own user.
 
@@ -88,6 +89,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `POST` | `/api/sessions` | `{ "name", "workingDirectory" }` creates a session and starts Claude, returns 201 |
 | `GET` | `/api/sessions/:id` | One session |
 | `DELETE` | `/api/sessions/:id` | Stop the tmux session, returns 204 |
+| `GET` | `/api/external` | Claude processes running outside tmux (pid, tty, cwd, uptime), read-only |
 | `GET` | `/api/config` | Allowed directories and prefix (for the form) |
 | `GET` | `/api/health` | `{ "ok": true }` |
 | `WS` | `/ws/sessions/:id?cols=&rows=` | Terminal. Client sends JSON `{type:"input",data}` / `{type:"resize",cols,rows}`; server sends binary terminal output and JSON `{type:"ready"|"exit"|"error"}` |
@@ -117,7 +119,8 @@ deploy/                   systemd unit template
 ## Troubleshooting
 
 - **Claude does not start in new sessions**: the service's PATH is set by `install.sh` from where `node`, `claude` and `tmux` were found at install time. If you move them, re-run `./install.sh`, or set `CLAUDE_COMMAND` to a full path.
-- **Sessions from my desktop terminal are missing**: they must be named `claude-...` (or your `SESSION_PREFIX`) and live on the same tmux server (default socket) as the service. Check with `tmux ls`.
+- **Sessions from my desktop terminal are missing**: only tmux sessions named `claude-...` (or your `SESSION_PREFIX`) on the same tmux server (default socket) can be opened. Check with `tmux ls`. A `claude` started in a plain terminal shows up under "Running outside tmux" but cannot be attached to; to carry it on from the phone, exit it, start a session in the same directory from the UI and run `/resume` in Claude.
+- **Start Claude in tmux from a desktop terminal** so it is manageable later: `tmux new -s claude-myproject -c ~/Projektek/myproject` then run `claude` inside.
 - **Terminal looks squashed after opening on the phone**: focus the desktop view again; `window-size latest` follows the last active client.
 
 ## Later ideas (not in the MVP)

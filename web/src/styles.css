@@ -112,6 +112,12 @@ code { color: var(--mint); }
 .session-meta { color: var(--fg-muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 0 14px; }
 .session-stop { align-self: center; }
 
+.external { margin-top: 32px; }
+.external h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+.external .muted { font-size: 12px; margin: 0 0 12px; }
+.session-external .session-main { cursor: default; }
+.session-external .dot { opacity: 0.6; }
+
 /* ---- modal ------------------------------------------------------------------------------ */
 .modal-backdrop {
   position: fixed; inset: 0;

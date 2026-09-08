@@ -1,4 +1,4 @@
-import type { AppConfig, ClaudeSession } from "./types";
+import type { AppConfig, ClaudeSession, ExternalClaude } from "./types";
 
 const TOKEN_KEY = "csm_token";
 
@@ -39,6 +39,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   config: () => request<AppConfig>("/api/config"),
   list: () => request<ClaudeSession[]>("/api/sessions"),
+  external: () => request<ExternalClaude[]>("/api/external"),
   get: (id: string) => request<ClaudeSession>(`/api/sessions/${encodeURIComponent(id)}`),
   create: (name: string, workingDirectory: string) =>
     request<ClaudeSession>("/api/sessions", { method: "POST", body: JSON.stringify({ name, workingDirectory }) }),

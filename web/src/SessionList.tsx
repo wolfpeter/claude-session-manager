@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { NewSessionForm } from "./NewSessionForm";
-import type { ClaudeSession } from "./types";
+import type { ClaudeSession, ExternalClaude } from "./types";
 
 const STATUS_LABEL: Record<ClaudeSession["status"], string> = {
   running: "Claude running",
@@ -13,6 +13,15 @@ const STATUS_LABEL: Record<ClaudeSession["status"], string> = {
 
 function shortenPath(p: string): string {
   return p.replace(/^\/home\/[^/]+/, "~");
+}
+
+function duration(seconds: number): string {
+  const mins = Math.max(0, Math.round(seconds / 60));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  if (h < 24) return `${h} h`;
+  return `${Math.floor(h / 24)} d`;
 }
 
 function age(iso?: string): string {
@@ -32,12 +41,15 @@ interface Props {
 
 export function SessionList({ onOpen, onError }: Props) {
   const [sessions, setSessions] = useState<ClaudeSession[] | null>(null);
+  const [external, setExternal] = useState<ExternalClaude[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      setSessions(await api.list());
+      const [list, ext] = await Promise.all([api.list(), api.external().catch(() => [])]);
+      setSessions(list);
+      setExternal(ext);
       setError(null);
     } catch (err) {
       onError(err);
@@ -84,7 +96,7 @@ export function SessionList({ onOpen, onError }: Props) {
 
       {sessions && sessions.length === 0 && (
         <div className="empty">
-          <p>No Claude sessions are running.</p>
+          <p>No Claude sessions are running in tmux.</p>
           <p className="muted">Start one here, or run <code>tmux new -s claude-something</code> on the machine and it appears in this list.</p>
         </div>
       )}
@@ -111,6 +123,34 @@ export function SessionList({ onOpen, onError }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {external.length > 0 && (
+        <section className="external">
+          <h2>Running outside tmux</h2>
+          <p className="muted">
+            These Claude Code processes were started in ordinary terminals, so no browser terminal can attach to them.
+            To continue one from here, exit it there, then start a session in the same directory and run <code>/resume</code>.
+          </p>
+          <ul className="sessions">
+            {external.map((e) => (
+              <li key={e.pid} className="session session-external">
+                <div className="session-main">
+                  <span className="dot status-running" />
+                  <span className="session-text">
+                    <span className="session-name">{shortenPath(e.workingDirectory).split("/").pop() || e.workingDirectory}</span>
+                    <span className="session-path">{shortenPath(e.workingDirectory)}</span>
+                    <span className="session-meta">
+                      <span>running {duration(e.uptimeSeconds)}</span>
+                      <span>{e.tty}</span>
+                      <span>pid {e.pid}</span>
+                    </span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {creating && (
