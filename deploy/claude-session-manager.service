@@ -1,0 +1,24 @@
+# Rendered by install.sh: __PLACEHOLDERS__ are substituted, the result is copied to systemd.
+[Unit]
+Description=Claude Session Manager (web UI for Claude Code sessions in tmux)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=__NODE__ --env-file-if-exists=__DIR__/.env __DIR__/server/dist/index.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+Environment="PATH=__PATH__"
+# tmux sessions started through the web UI live in this service's cgroup. "process" makes systemd
+# stop only the Node process on restart/stop, so Claude sessions survive backend restarts and updates.
+KillMode=process
+# tmux talks over /tmp/tmux-<uid>/default; keep /tmp shared so local terminals see the same sessions.
+PrivateTmp=no
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

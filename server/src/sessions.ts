@@ -84,6 +84,9 @@ export class SessionService {
     await this.tmux.newSession(id, cwd);
     try {
       await this.tmux.setSessionOption(id, OPT_NAME, name);
+      // The tmux status bar costs a row on a phone; Claude Code has its own status line anyway.
+      await this.tmux.setSessionOption(id, "status", "off");
+      await this.tmux.ensureServerOptions();
       await this.tmux.sendCommand(id, this.config.claudeCommand);
     } catch (err) {
       await this.tmux.killSession(id).catch(() => undefined);

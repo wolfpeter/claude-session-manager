@@ -145,6 +145,23 @@ export class Tmux {
     await this.run(["set-option", "-g", option, value]);
   }
 
+  private serverOptionsApplied = false;
+
+  /**
+   * tmux sizes a window to the smallest attached client by default; "latest" follows the most
+   * recently active client instead, so a phone opening a session does not shrink the desktop view.
+   * Safe to call often: no-op when already applied, silently skipped when no server is running yet.
+   */
+  async ensureServerOptions(): Promise<void> {
+    if (this.serverOptionsApplied) return;
+    try {
+      await this.setGlobalOption("window-size", "latest");
+      this.serverOptionsApplied = true;
+    } catch {
+      /* no tmux server yet: retried on the next call */
+    }
+  }
+
   /** Scrollback (history above the visible screen) with colours, last `lines` lines. */
   async captureHistory(name: string, lines: number): Promise<string> {
     if (lines <= 0) return "";

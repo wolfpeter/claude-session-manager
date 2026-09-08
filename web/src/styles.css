@@ -1,0 +1,190 @@
+:root {
+  --bg: #171a21;
+  --bg-raised: #1f232c;
+  --bg-terminal: #11141a;
+  --line: #2c313c;
+  --fg: #e4e2dc;
+  --fg-muted: #8a909c;
+  --mint: #8fd6bd;
+  --amber: #e0b257;
+  --rose: #e28b8b;
+  --focus: #9fc7ff;
+  --font: "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", ui-monospace, Menlo, monospace;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button, input { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+code { color: var(--mint); }
+
+/* ---- buttons ---------------------------------------------------------------------------- */
+.btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 14px;
+  min-height: 40px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--fg-muted); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn-primary { background: var(--mint); border-color: var(--mint); color: #0e1a16; font-weight: 600; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-quiet { background: transparent; border-color: transparent; color: var(--fg-muted); }
+.btn-quiet:hover { color: var(--fg); border-color: transparent; }
+
+/* ---- status dot ------------------------------------------------------------------------- */
+.dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex: none;
+}
+.status-running .dot, .dot.status-running { background: var(--mint); box-shadow: 0 0 0 3px rgba(143, 214, 189, 0.18); }
+.status-waiting .dot, .dot.status-waiting { background: var(--amber); }
+.status-idle .dot, .dot.status-idle { background: var(--amber); }
+.status-stopped .dot, .dot.status-stopped,
+.status-error .dot, .dot.status-error { background: var(--rose); }
+
+/* ---- list page -------------------------------------------------------------------------- */
+.list-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px calc(24px + var(--safe-b));
+}
+.list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+.list-header h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+
+.muted { color: var(--fg-muted); }
+.notice { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); }
+.notice-error { border-color: var(--rose); color: var(--rose); }
+
+.empty { padding: 32px 0; }
+.empty p { margin: 0 0 8px; }
+
+.sessions { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.session {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.session-main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 4px 14px 2px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.session-main:hover .session-name { color: var(--mint); }
+.session-main .dot { margin-top: 6px; }
+.session-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.session-name { font-size: 16px; font-weight: 600; }
+.session-path { color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-meta { color: var(--fg-muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 0 14px; }
+.session-stop { align-self: center; }
+
+/* ---- modal ------------------------------------------------------------------------------ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px;
+}
+@media (min-width: 600px) { .modal-backdrop { align-items: center; } }
+.modal {
+  width: 100%; max-width: 480px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  margin-bottom: var(--safe-b);
+}
+.modal h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.modal label { display: flex; flex-direction: column; gap: 6px; color: var(--fg-muted); }
+.modal input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-height: 44px;
+  color: var(--fg);
+}
+.modal input:focus { border-color: var(--mint); outline: none; }
+.hint { font-size: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---- terminal page ---------------------------------------------------------------------- */
+.term-page {
+  height: 100%;
+  height: 100dvh;
+  display: flex; flex-direction: column;
+  background: var(--bg-terminal);
+}
+.term-header {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  flex: none;
+}
+.term-title { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; justify-content: center; }
+.term-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.conn { font-size: 12px; color: var(--amber); }
+.conn-ended { color: var(--rose); }
+
+.term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
+.term-host .xterm { height: 100%; }
+.term-host .xterm-viewport { overflow-y: auto !important; }
+
+.keybar {
+  flex: none;
+  display: flex; gap: 6px;
+  padding: 6px 6px calc(6px + var(--safe-b));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+}
+.keybar button {
+  flex: 1 0 auto;
+  min-width: 44px; min-height: 40px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--fg);
+  cursor: pointer;
+}
+.keybar button:active { background: var(--line); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .session-name { transition: color 120ms, border-color 120ms; }
+}
