@@ -101,10 +101,13 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   // ---- Frontend ---------------------------------------------------------------------------------
   if (config.webDist && fs.existsSync(path.join(config.webDist, "index.html"))) {
-    await app.register(fastifyStatic, { root: config.webDist, wildcard: false });
+    // wildcard (default) serves whatever is on disk at request time, so a frontend rebuild with new
+    // hashed asset names does not require a backend restart; missing files fall through to the handler below.
+    await app.register(fastifyStatic, { root: config.webDist });
     // SPA fallback: any non-API GET serves index.html so /sessions/:id deep links work.
     app.setNotFoundHandler((req, reply) => {
-      if (req.method === "GET" && !req.url.startsWith("/api/") && !req.url.startsWith("/ws/")) {
+      const isPage = !req.url.startsWith("/api/") && !req.url.startsWith("/ws/") && !req.url.startsWith("/assets/");
+      if (req.method === "GET" && isPage) {
         return reply.sendFile("index.html");
       }
       return reply.code(404).send({ error: "Not found" });
