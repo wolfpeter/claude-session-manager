@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import { api, wsUrl } from "./api";
 import { useHostname } from "./useHostname";
 import type { ClaudeSession } from "./types";
@@ -72,6 +73,11 @@ export function TerminalView({ id, onBack, onError }: Props) {
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
+    // URLs printed by tools (gcloud login, OAuth flows) open in a new tab on click/tap.
+    term.loadAddon(new WebLinksAddon((event, uri) => {
+      event.preventDefault();
+      window.open(uri, "_blank", "noopener,noreferrer");
+    }));
     term.open(host);
     fit.fit();
     termRef.current = term;

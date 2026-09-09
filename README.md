@@ -16,6 +16,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 - Starts a new session: creates the tmux session in the chosen project directory and runs `claude` in it.
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
+- URLs in the output are tappable and open in a new tab (login links from `gcloud auth login --no-launch-browser` and similar flows).
 - Stop button ends the tmux session only. Project files are never touched.
 - Claude Code processes started in ordinary terminals (outside tmux) are listed too, read-only: the browser cannot attach to them, but you see where they run and for how long.
 - No database: tmux is the source of truth. Session names are stored as a tmux option on the session itself.
