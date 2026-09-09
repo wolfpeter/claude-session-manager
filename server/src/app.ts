@@ -89,7 +89,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       app.log.info({ id, ip: req.ip }, "terminal connected");
       socket.on("close", () => app.log.info({ id, ip: req.ip }, "terminal disconnected"));
       await tmux.ensureServerOptions();
-      attachTerminal(
+      await attachTerminal(
         socket,
         tmux,
         id,

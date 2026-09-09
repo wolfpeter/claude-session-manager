@@ -31,6 +31,7 @@ export function TerminalView({ id, onBack, onError }: Props) {
   const termRef = useRef<Terminal | null>(null);
   const [conn, setConn] = useState<ConnState>("connecting");
   const [session, setSession] = useState<ClaudeSession | null>(null);
+  const [scrolledUp, setScrolledUp] = useState(false);
 
   // Session metadata (name + status) for the header, refreshed while visible.
   useEffect(() => {
@@ -140,6 +141,44 @@ export function TerminalView({ id, onBack, onError }: Props) {
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data }));
     });
 
+    // Touch scrolling done by hand: xterm's own gesture handling listens on the document and lets the
+    // drag reach the page, which triggers pull-to-refresh on mobile Chrome. Handling it here (and
+    // stopping propagation) keeps the gesture inside the terminal and scrolls its buffer.
+    let touchY: number | null = null;
+    let carry = 0;
+    const rowHeight = () => host.clientHeight / Math.max(1, term.rows);
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchY = e.touches[0].clientY;
+        carry = 0;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY === null || e.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const y = e.touches[0].clientY;
+      carry += touchY - y;
+      touchY = y;
+      const rows = Math.trunc(carry / rowHeight());
+      if (rows !== 0) {
+        term.scrollLines(rows);
+        carry -= rows * rowHeight();
+      }
+    };
+    const onTouchEnd = () => {
+      touchY = null;
+    };
+    host.addEventListener("touchstart", onTouchStart, { passive: true });
+    host.addEventListener("touchmove", onTouchMove, { passive: false });
+    host.addEventListener("touchend", onTouchEnd);
+    host.addEventListener("touchcancel", onTouchEnd);
+
+    const onScroll = term.onScroll(() => {
+      const buf = term.buffer.active;
+      setScrolledUp(buf.viewportY < buf.baseY);
+    });
+
     const ro = new ResizeObserver(() => {
       fit.fit();
       sendResize();
@@ -163,6 +202,11 @@ export function TerminalView({ id, onBack, onError }: Props) {
       window.clearTimeout(retryTimer);
       document.removeEventListener("visibilitychange", onVisible);
       ro.disconnect();
+      host.removeEventListener("touchstart", onTouchStart);
+      host.removeEventListener("touchmove", onTouchMove);
+      host.removeEventListener("touchend", onTouchEnd);
+      host.removeEventListener("touchcancel", onTouchEnd);
+      onScroll.dispose();
       onData.dispose();
       onBinary.dispose();
       ws?.close();
@@ -203,6 +247,16 @@ export function TerminalView({ id, onBack, onError }: Props) {
         </button>
       </header>
       <div className="term-host" ref={hostRef} />
+      {scrolledUp && (
+        <button
+          type="button"
+          className="jump-bottom"
+          onClick={() => termRef.current?.scrollToBottom()}
+          aria-label="Jump to the latest output"
+        >
+          ↓ latest
+        </button>
+      )}
       {IS_TOUCH && (
         <div className="keybar" role="toolbar" aria-label="Extra keys">
           {KEYS.map((k) => (

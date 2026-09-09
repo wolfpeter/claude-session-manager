@@ -147,15 +147,29 @@ export class Tmux {
 
   private serverOptionsApplied = false;
 
+  /** TERM used for browser clients. Its terminal-overrides entry disables the alternate screen. */
+  static readonly BROWSER_TERM = "tmux-256color";
+  private static readonly OVERRIDE = `${Tmux.BROWSER_TERM}:smcup@:rmcup@`;
+
   /**
-   * tmux sizes a window to the smallest attached client by default; "latest" follows the most
-   * recently active client instead, so a phone opening a session does not shrink the desktop view.
-   * Safe to call often: no-op when already applied, silently skipped when no server is running yet.
+   * Server-wide options needed by the browser clients. Safe to call often: no-op when already
+   * applied, silently skipped when no server is running yet.
+   *
+   * - window-size latest: tmux sizes a window to the smallest attached client by default; "latest"
+   *   follows the most recently active client, so a phone opening a session does not shrink the
+   *   desktop view.
+   * - terminal-overrides for BROWSER_TERM: without smcup/rmcup, tmux draws on the browser terminal's
+   *   normal screen, so lines scrolling off the top land in xterm.js scrollback and the user can
+   *   scroll back on the phone. Keyed by TERM, so desktop tmux clients (xterm-256color) are untouched.
    */
   async ensureServerOptions(): Promise<void> {
     if (this.serverOptionsApplied) return;
     try {
       await this.setGlobalOption("window-size", "latest");
+      const current = await this.run(["show-options", "-gv", "terminal-overrides"]).catch(() => "");
+      if (!current.includes(Tmux.OVERRIDE)) {
+        await this.run(["set-option", "-ga", "terminal-overrides", `,${Tmux.OVERRIDE}`]);
+      }
       this.serverOptionsApplied = true;
     } catch {
       /* no tmux server yet: retried on the next call */

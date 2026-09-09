@@ -16,6 +16,8 @@
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
+/* No pull-to-refresh or rubber-banding: the terminal handles its own scrolling. */
+html, body { overscroll-behavior: none; }
 
 body {
   margin: 0;
@@ -168,7 +170,22 @@ code { color: var(--mint); }
 .conn { font-size: 12px; color: var(--amber); }
 .conn-ended { color: var(--rose); }
 
-.term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
+.term-page { position: relative; }
+.term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; touch-action: none; }
+.jump-bottom {
+  position: absolute;
+  right: 12px;
+  bottom: calc(64px + var(--safe-b));
+  background: var(--mint);
+  color: #0e1a16;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+@media (pointer: fine) { .jump-bottom { bottom: 16px; } }
 .term-host .xterm { height: 100%; }
 .term-host .xterm-viewport { overflow-y: auto !important; }
 

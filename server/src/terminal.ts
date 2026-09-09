@@ -1,6 +1,7 @@
+import { execFile } from "node:child_process";
 import * as pty from "node-pty";
 import type { WebSocket } from "ws";
-import type { Tmux } from "./tmux.js";
+import { Tmux } from "./tmux.js";
 import type { Logger } from "./sessions.js";
 import type { ClientMessage, ServerMessage } from "./types.js";
 
@@ -9,6 +10,15 @@ export interface TerminalOptions {
   rows: number;
   historyLines: number;
 }
+
+/**
+ * TERM for the PTY. tmux-256color (with the matching terminal-overrides, see Tmux.ensureServerOptions)
+ * gives scrollback in the browser; if its terminfo is missing we fall back to xterm-256color and lose
+ * scrollback rather than break colours.
+ */
+const browserTerm: Promise<string> = new Promise((resolve) => {
+  execFile("infocmp", [Tmux.BROWSER_TERM], (err) => resolve(err ? "xterm-256color" : Tmux.BROWSER_TERM));
+});
 
 const MIN_SIZE = 2;
 const MAX_SIZE = 1000;
@@ -23,25 +33,28 @@ export function clampSize(n: unknown, fallback: number): number {
  * Bridges one WebSocket to one `tmux attach-session` client running in a PTY.
  * Closing the socket only detaches the tmux client; the session (and Claude inside it) keeps running.
  */
-export function attachTerminal(
+export async function attachTerminal(
   ws: WebSocket,
   tmux: Tmux,
   sessionId: string,
   opts: TerminalOptions,
   log: Logger,
-): void {
+): Promise<void> {
   const send = (msg: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
   };
 
+  const termName = await browserTerm;
+  if (termName !== Tmux.BROWSER_TERM) log.warn({ termName }, "tmux-256color terminfo missing; browser scrollback disabled");
+
   let term: pty.IPty;
   try {
     term = pty.spawn(tmux.command, [...tmux.baseArgs(), "attach-session", "-t", `=${sessionId}`], {
-      name: "xterm-256color",
+      name: termName,
       cols: opts.cols,
       rows: opts.rows,
       cwd: process.env.HOME ?? "/",
-      env: { ...process.env, TERM: "xterm-256color", LANG: process.env.LANG ?? "C.UTF-8" },
+      env: { ...process.env, TERM: termName, LANG: process.env.LANG ?? "C.UTF-8" },
     });
   } catch (err) {
     log.error({ sessionId, err }, "failed to spawn tmux attach");
