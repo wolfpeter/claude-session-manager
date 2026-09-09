@@ -176,6 +176,18 @@ export class Tmux {
     }
   }
 
+  /**
+   * Resizes the window to the size a client is about to attach with, so the scrollback captured
+   * right after this matches what tmux will draw. resize-window flips the window to manual sizing;
+   * restore "latest" so later clients keep controlling the size.
+   */
+  async resizeWindow(name: string, cols: number, rows: number): Promise<void> {
+    const status = (await this.run(["show-options", "-v", "-t", `=${name}:`, "status"]).catch(() => "off")).trim();
+    const windowRows = status === "off" ? rows : Math.max(1, rows - 1);
+    await this.run(["resize-window", "-t", `=${name}:`, "-x", String(cols), "-y", String(windowRows)]);
+    await this.run(["set-option", "-w", "-t", `=${name}:`, "window-size", "latest"]);
+  }
+
   /** Scrollback (history above the visible screen) with colours, last `lines` lines. */
   async captureHistory(name: string, lines: number): Promise<string> {
     if (lines <= 0) return "";

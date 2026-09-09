@@ -47,6 +47,20 @@ export async function attachTerminal(
   const termName = await browserTerm;
   if (termName !== Tmux.BROWSER_TERM) log.warn({ termName }, "tmux-256color terminfo missing; browser scrollback disabled");
 
+  // Scrollback first, attach second: size the window like this client, send the history above the
+  // visible screen, then push it entirely into xterm's scrollback with blank lines so tmux draws the
+  // visible screen onto an empty page. No lines lost, none duplicated.
+  try {
+    await tmux.resizeWindow(sessionId, opts.cols, opts.rows);
+    const history = (await tmux.captureHistory(sessionId, opts.historyLines)).replace(/^(\s*\n)+/, "");
+    if (history && ws.readyState === ws.OPEN) {
+      const lines = history.replace(/\n$/, "").split("\n");
+      ws.send(Buffer.from(lines.join("\r\n") + "\r\n".repeat(opts.rows + 1), "utf8"));
+    }
+  } catch (err) {
+    log.warn({ sessionId, err }, "history capture failed");
+  }
+
   let term: pty.IPty;
   try {
     term = pty.spawn(tmux.command, [...tmux.baseArgs(), "attach-session", "-t", `=${sessionId}`], {
@@ -62,20 +76,6 @@ export async function attachTerminal(
     ws.close(1011, "attach failed");
     return;
   }
-
-  // Scrollback: lines above the visible screen. tmux redraws the visible part itself on attach,
-  // so we only prepend the history and then let the attach redraw follow.
-  tmux
-    .captureHistory(sessionId, opts.historyLines)
-    .then((history) => {
-      const trimmed = history.replace(/^(\s*\n)+/, "");
-      if (trimmed && ws.readyState === ws.OPEN) {
-        ws.send(Buffer.from(trimmed.replace(/\n/g, "\r\n"), "utf8"));
-      }
-      // Force tmux to redraw the visible screen after the history has been written out.
-      tmux.run(["refresh-client", "-t", `=${sessionId}`]).catch(() => undefined);
-    })
-    .catch((err) => log.warn({ sessionId, err }, "history capture failed"));
 
   send({ type: "ready", id: sessionId });
 
