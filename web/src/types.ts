@@ -11,6 +11,7 @@ export interface ClaudeSession {
 }
 
 export interface AppConfig {
+  hostname: string;
   allowedDirectories: string[];
   sessionPrefix: string;
 }

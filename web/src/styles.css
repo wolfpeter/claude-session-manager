@@ -80,6 +80,8 @@ code { color: var(--mint); }
   padding: 8px 0 16px;
 }
 .list-header h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.hostname { display: block; color: var(--mint); font-size: 13px; margin-top: 2px; }
+.term-host-name { color: var(--fg-muted); font-weight: 400; }
 
 .muted { color: var(--fg-muted); }
 .notice { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); }

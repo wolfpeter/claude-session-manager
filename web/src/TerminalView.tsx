@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { api, wsUrl } from "./api";
+import { useHostname } from "./useHostname";
 import type { ClaudeSession } from "./types";
 
 type ConnState = "connecting" | "open" | "reconnecting" | "ended";
@@ -32,6 +33,7 @@ export function TerminalView({ id, onBack, onError }: Props) {
   const [conn, setConn] = useState<ConnState>("connecting");
   const [session, setSession] = useState<ClaudeSession | null>(null);
   const [scrolledUp, setScrolledUp] = useState(false);
+  const hostname = useHostname();
 
   // Session metadata (name + status) for the header, refreshed while visible.
   useEffect(() => {
@@ -239,7 +241,10 @@ export function TerminalView({ id, onBack, onError }: Props) {
         </button>
         <div className="term-title">
           <span className={`dot status-${session?.status ?? "idle"}`} />
-          <span className="term-name">{session?.name ?? id}</span>
+          <span className="term-name">
+            {hostname && <span className="term-host-name">{hostname} / </span>}
+            {session?.name ?? id}
+          </span>
           <span className={`conn conn-${conn}`}>{conn === "open" ? "" : conn}</span>
         </div>
         <button className="btn btn-quiet" onClick={() => void stop()} aria-label="Stop session">

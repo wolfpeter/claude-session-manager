@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { NewSessionForm } from "./NewSessionForm";
+import { useHostname } from "./useHostname";
 import type { ClaudeSession, ExternalClaude } from "./types";
 
 const STATUS_LABEL: Record<ClaudeSession["status"], string> = {
@@ -44,6 +45,7 @@ export function SessionList({ onOpen, onError }: Props) {
   const [external, setExternal] = useState<ExternalClaude[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const hostname = useHostname();
 
   const refresh = useCallback(async () => {
     try {
@@ -84,7 +86,10 @@ export function SessionList({ onOpen, onError }: Props) {
   return (
     <main className="list-page">
       <header className="list-header">
-        <h1>Claude sessions</h1>
+        <div>
+          <h1>Claude sessions</h1>
+          {hostname && <span className="hostname">{hostname}</span>}
+        </div>
         <button className="btn btn-primary" onClick={() => setCreating(true)}>
           New session
         </button>

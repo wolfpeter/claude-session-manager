@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
@@ -71,6 +72,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   app.get("/api/external", async () => listExternalClaudes(tmux));
 
   app.get("/api/config", async () => ({
+    hostname: os.hostname(),
     allowedDirectories: config.allowedDirectories,
     sessionPrefix: config.sessionPrefix,
   }));
