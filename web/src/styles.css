@@ -233,7 +233,7 @@ code { color: var(--mint); }
 
 .term-page { position: relative; }
 .term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; touch-action: none; }
-.jump-bottom, .copy-selection {
+.jump-bottom {
   position: absolute;
   right: 12px;
   bottom: calc(64px + var(--safe-b));
@@ -246,19 +246,30 @@ code { color: var(--mint); }
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-/* Quieter than "jump to latest", and on the other side so the two never overlap. */
-.copy-selection {
-  right: auto;
+/* Copying lives on the other side so it never overlaps "jump to latest". */
+.copy-bar {
+  position: absolute;
   left: 12px;
+  bottom: calc(64px + var(--safe-b));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.copy-selection {
   background: var(--bg-raised);
   color: var(--fg);
   border: 1px solid var(--line);
-  font-weight: 400;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .copy-selection:hover { border-color: var(--fg-muted); }
+/* Only shown while the pane has mouse reporting on, where a plain drag cannot select. */
+.copy-hint { font-size: 12px; color: var(--fg-muted); text-shadow: 0 1px 4px var(--bg-terminal); }
 
-/* No key bar on a desktop, so both buttons can sit lower. */
-@media (pointer: fine) { .jump-bottom, .copy-selection { bottom: 16px; } }
+/* No key bar on a desktop, so both can sit lower. */
+@media (pointer: fine) { .jump-bottom, .copy-bar { bottom: 16px; } }
 .term-host .xterm { height: 100%; }
 .term-host .xterm-viewport { overflow-y: auto !important; }
 

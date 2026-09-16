@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { api, wsUrl } from "./api";
 import { copyText } from "./clipboard";
+import { screenText } from "./screenText";
 import { useHostname } from "./useHostname";
 import { chipLabel, needsYouCount, sortSessions, STATUS_LABEL } from "./sessionView";
 import type { ClaudeSession } from "./types";
@@ -40,6 +41,9 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
   // xterm keeps its own selection and copies nothing on its own; this drives the copy button.
   const [hasSelection, setHasSelection] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  // Claude Code turns on the terminal's mouse reporting; while that is on, a plain drag goes to
+  // Claude and only Shift+drag selects. Worth saying out loud instead of letting people guess.
+  const [mouseMode, setMouseMode] = useState(false);
   const copyResetRef = useRef<number | undefined>(undefined);
   const session = sessions.find((s) => s.id === id) ?? null;
   const hostname = useHostname(needsYouCount(sessions));
@@ -197,6 +201,7 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
     });
 
     const onSelection = term.onSelectionChange(() => setHasSelection(term.hasSelection()));
+    const modeTimer = window.setInterval(() => setMouseMode(term.modes.mouseTrackingMode !== "none"), 1000);
 
     const ro = new ResizeObserver(() => {
       fit.fit();
@@ -227,6 +232,7 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
       host.removeEventListener("touchcancel", onTouchEnd);
       onScroll.dispose();
       onSelection.dispose();
+      window.clearInterval(modeTimer);
       window.clearTimeout(copyResetRef.current);
       onData.dispose();
       onBinary.dispose();
@@ -236,12 +242,15 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
     };
   }, [id]);
 
-  const copySelection = async () => {
-    const ok = await copyText(termRef.current?.getSelection() ?? "");
+  /** Copies the selection when there is one, otherwise everything on the visible screen. */
+  const copy = async () => {
+    const term = termRef.current;
+    if (!term) return;
+    const ok = await copyText(term.hasSelection() ? term.getSelection() : screenText(term));
     setCopyState(ok ? "copied" : "failed");
     window.clearTimeout(copyResetRef.current);
     copyResetRef.current = window.setTimeout(() => setCopyState("idle"), 1500);
-    termRef.current?.focus();
+    term.focus();
   };
 
   // term.input() feeds the sequence through onData, so it travels the same path as typed keys.
@@ -300,18 +309,25 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
         </nav>
       )}
       <div className="term-host" ref={hostRef} />
-      {hasSelection && (
+      <div className="copy-bar">
         <button
           type="button"
           className="copy-selection"
           // Keep the selection and the terminal focus: the default mousedown would take both.
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => void copySelection()}
-          aria-label="Copy the selected text"
+          onClick={() => void copy()}
+          aria-label={hasSelection ? "Copy the selected text" : "Copy everything on the screen"}
         >
-          {copyState === "copied" ? "✓ copied" : copyState === "failed" ? "copy failed" : "⧉ copy"}
+          {copyState === "copied"
+            ? "✓ copied"
+            : copyState === "failed"
+              ? "copy failed"
+              : hasSelection
+                ? "⧉ copy"
+                : "⧉ copy screen"}
         </button>
-      )}
+        {!IS_TOUCH && mouseMode && !hasSelection && <span className="copy-hint">Shift+drag to select</span>}
+      </div>
       {scrolledUp && (
         <button
           type="button"
