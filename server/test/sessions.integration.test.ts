@@ -20,6 +20,7 @@ beforeAll(async () => {
     port: 0, host: "127.0.0.1", claudeCommand: "echo hello-from-claude", sessionPrefix: "claude-",
     allowedDirectories: [root], authToken: "", historyLines: 50, logLevel: "silent", tmuxSocket: socket, webDist: "",
     stallSeconds: 120,
+    repoRoot: root, updateBranch: "main", updateCheckMinutes: 0,
   };
 });
 

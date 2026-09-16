@@ -15,6 +15,12 @@ export interface Config {
   tmuxSocket: string;
   /** A busy-looking session with no output for this long is reported as stalled. */
   stallSeconds: number;
+  /** The checkout this app runs from; the update button pulls and rebuilds it. */
+  repoRoot: string;
+  /** Branch the update follows. */
+  updateBranch: string;
+  /** How often to fetch the remote to see whether an update is waiting. 0 disables the check. */
+  updateCheckMinutes: number;
   /** Directory of the built frontend (index.html + assets). */
   webDist: string;
 }
@@ -50,6 +56,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: env.LOG_LEVEL ?? "info",
     tmuxSocket: env.TMUX_SOCKET ?? "",
     stallSeconds: int(env.STALL_SECONDS, DEFAULT_STALL_SECONDS),
+    repoRoot: env.REPO_ROOT ?? path.resolve(import.meta.dirname, "../.."),
+    updateBranch: env.UPDATE_BRANCH ?? "main",
+    updateCheckMinutes: int(env.UPDATE_CHECK_MINUTES, 15),
     webDist: env.WEB_DIST ?? path.resolve(import.meta.dirname, "../../web/dist"),
   };
 }

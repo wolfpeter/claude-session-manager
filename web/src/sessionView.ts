@@ -1,4 +1,4 @@
-import type { ClaudeSession, SessionStatus } from "./types";
+import type { ClaudeSession, SessionStatus, UpdateStatus } from "./types";
 
 export const STATUS_LABEL: Record<SessionStatus, string> = {
   running: "Working",
@@ -72,4 +72,9 @@ export function startedLabel(createdAt: string, now: number = Date.now()): strin
 export function chipLabel(name: string, max = 14): string {
   if (name.length <= max) return name;
   return `${name.slice(0, max - 1).replace(/[\s\-_]+$/, "")}…`;
+}
+
+/** Text of the update button: what pulling would bring in, or that there is nothing to bring. */
+export function updateLabel(status: UpdateStatus): string {
+  return status.available ? `Update · ${status.behind} new` : "Up to date";
 }

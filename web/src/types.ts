@@ -32,3 +32,14 @@ export interface ExternalClaude {
   uptimeSeconds: number;
   args: string;
 }
+
+/** State of the checkout this dashboard runs from; drives the update button. */
+export interface UpdateStatus {
+  supported: boolean;
+  available: boolean;
+  behind: number;
+  current: string;
+  branch: string;
+  dirty: boolean;
+  checkedAt?: string;
+}

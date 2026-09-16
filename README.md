@@ -20,6 +20,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 - URLs in the output are tappable and open in a new tab (login links from `gcloud auth login --no-launch-browser` and similar flows).
 - Selecting text in the terminal shows a copy button. xterm keeps its own selection, so the page has to put it on the clipboard; it falls back to the old `execCommand` route because `navigator.clipboard` does not exist over plain HTTP on a LAN or Tailscale address.
 - Stop button ends the tmux session only. Project files are never touched.
+- Update button in the list header: says whether the checkout is behind its remote, and starts `deploy.sh` in a tmux session you watch in the browser (see below).
 - Claude Code processes started in ordinary terminals (outside tmux) are listed too, read-only: the browser cannot attach to them, but you see where they run and for how long.
 - No database: tmux is the source of truth. Session names are stored as a tmux option on the session itself.
 - Runs as a systemd service under your own user.
@@ -88,6 +89,9 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `AUTH_TOKEN` | empty | If set, every API and WebSocket request needs it (`X-Api-Key` header or `?token=`). The UI asks for it once and remembers it. |
 | `HISTORY_LINES` | `200` | Scrollback lines sent to the browser on connect |
 | `STALL_SECONDS` | `120` | A busy-looking session with no output for this long is shown as "May be stuck" |
+| `UPDATE_BRANCH` | `main` | Branch the update button follows |
+| `UPDATE_CHECK_MINUTES` | `15` | How often the remote is fetched to see whether an update is waiting; `0` disables the check |
+| `REPO_ROOT` | the checkout this runs from | Where the update button runs `deploy.sh` |
 | `LOG_LEVEL` | `info` | pino log level |
 | `TMUX_SOCKET` | empty | Optional `tmux -L` socket name, to keep the manager's sessions on a separate tmux server |
 
@@ -118,6 +122,16 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 - **Scrollback on the phone**: browser clients attach with `TERM=tmux-256color`, and the server adds `tmux-256color:smcup@:rmcup@` to the tmux `terminal-overrides` option. Without the alternate screen, lines scrolling off the top stay in xterm.js scrollback, so swiping up in the terminal scrolls history (the page itself never scrolls, so no pull-to-refresh). Desktop tmux clients use a different TERM and are not affected.
 - **Backend restarts**: the systemd unit uses `KillMode=process`, so stopping or restarting the service only kills Node; the tmux server started from it stays alive and is rediscovered on start.
 
+## Updating from the browser
+
+The update button starts `deploy.sh` in a tmux session and opens it, instead of running the update inside the service. That is not indirection for its own sake:
+
+- The update ends by restarting this very service. A process cannot outlive its own restart, but a tmux session can - `KillMode=process` keeps tmux running - so the output stays readable across it, and the browser reconnects on its own.
+- The restart needs a password, and the web-facing process must not have one. In a terminal a person answers the sudo prompt, which keeps a human check on "pull code from the internet and restart".
+- If anything fails - a dirty checkout, a build error - you are looking at the terminal that says why.
+
+One caveat: if the machine reboots and the *service* is what starts the tmux server, that server inherits `NoNewPrivileges=yes` from the unit and `sudo` inside it cannot ask for a password at all. Starting tmux from a normal terminal once (or running the update from a desktop terminal) avoids it.
+
 ## Security notes
 
 - The app is meant for a private network (Tailscale). There is no login by default; set `AUTH_TOKEN` for a shared secret, and put a reverse proxy with TLS in front if you expose it more widely.
@@ -134,6 +148,8 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `GET` | `/api/sessions/:id` | One session |
 | `DELETE` | `/api/sessions/:id` | Stop the tmux session, returns 204 |
 | `GET` | `/api/external` | Claude processes running outside tmux (pid, tty, cwd, uptime), read-only |
+| `GET` | `/api/update` | Whether the checkout is behind its remote (`{supported, available, behind, current, branch, dirty, checkedAt}`) |
+| `POST` | `/api/update` | Starts `deploy.sh` in a tmux session, returns `{ "id" }` to attach to |
 | `GET` | `/api/config` | Allowed directories and prefix (for the form) |
 | `GET` | `/api/health` | `{ "ok": true }` |
 | `WS` | `/ws/sessions/:id?cols=&rows=` | Terminal. Client sends JSON `{type:"input",data}` / `{type:"resize",cols,rows}`; server sends binary terminal output and JSON `{type:"ready"|"exit"|"error"}` |

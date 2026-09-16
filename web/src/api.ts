@@ -1,4 +1,4 @@
-import type { AppConfig, ClaudeSession, ExternalClaude } from "./types";
+import type { AppConfig, ClaudeSession, ExternalClaude, UpdateStatus } from "./types";
 
 const TOKEN_KEY = "csm_token";
 
@@ -44,6 +44,8 @@ export const api = {
   create: (name: string, workingDirectory: string) =>
     request<ClaudeSession>("/api/sessions", { method: "POST", body: JSON.stringify({ name, workingDirectory }) }),
   remove: (id: string) => request<void>(`/api/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  updateStatus: () => request<UpdateStatus>("/api/update"),
+  startUpdate: () => request<{ id: string }>("/api/update", { method: "POST" }),
 };
 
 export function wsUrl(id: string, cols: number, rows: number): string {

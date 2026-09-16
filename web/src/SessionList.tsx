@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { NewSessionForm } from "./NewSessionForm";
 import { useHostname } from "./useHostname";
-import { needsYouCount, sortSessions, startedLabel, statusAge, STATUS_LABEL } from "./sessionView";
-import type { ClaudeSession, ExternalClaude } from "./types";
+import { formatElapsed, needsYouCount, sortSessions, startedLabel, statusAge, updateLabel, STATUS_LABEL } from "./sessionView";
+import type { ClaudeSession, ExternalClaude, UpdateStatus } from "./types";
 
 function shortenPath(p: string): string {
   return p.replace(/^\/home\/[^/]+/, "~");
@@ -27,15 +27,21 @@ interface Props {
 export function SessionList({ onOpen, onError }: Props) {
   const [sessions, setSessions] = useState<ClaudeSession[] | null>(null);
   const [external, setExternal] = useState<ExternalClaude[]>([]);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const hostname = useHostname(sessions ? needsYouCount(sessions) : 0);
 
   const refresh = useCallback(async () => {
     try {
-      const [list, ext] = await Promise.all([api.list(), api.external().catch(() => [])]);
+      const [list, ext, upd] = await Promise.all([
+        api.list(),
+        api.external().catch(() => []),
+        api.updateStatus().catch(() => null),
+      ]);
       setSessions(list);
       setExternal(ext);
+      setUpdate(upd);
       setError(null);
     } catch (err) {
       onError(err);
@@ -56,6 +62,25 @@ export function SessionList({ onOpen, onError }: Props) {
     };
   }, [refresh]);
 
+  // The update runs in a tmux session instead of in this process: it ends by restarting this very
+  // service, and the restart needs a password the service must not have. In a terminal you can
+  // watch it, answer the sudo prompt, and read the output across the restart.
+  const startUpdate = async () => {
+    if (!update) return;
+    const what = update.available
+      ? `Pull ${update.behind} new commit${update.behind > 1 ? "s" : ""}, rebuild and restart the service?`
+      : "Rebuild and restart the service? There is nothing new to pull.";
+    const dirty = update.dirty ? "\n\nThis checkout has local changes, so the pull may refuse to run." : "";
+    if (!window.confirm(`${what}\n\nIt runs in a terminal you can watch; you may have to type your sudo password there.${dirty}`)) return;
+    try {
+      const { id } = await api.startUpdate();
+      onOpen(id);
+    } catch (err) {
+      onError(err);
+      setError(err instanceof Error ? err.message : "Could not start the update");
+    }
+  };
+
   const stop = async (s: ClaudeSession) => {
     if (!window.confirm(`Stop "${s.name}"? Claude and its tmux session end. Project files stay untouched.`)) return;
     try {
@@ -74,9 +99,26 @@ export function SessionList({ onOpen, onError }: Props) {
           <h1>Claude sessions</h1>
           {hostname && <span className="hostname">{hostname}</span>}
         </div>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>
-          New session
-        </button>
+        <div className="header-actions">
+          {update?.supported && (
+            <button
+              className={`btn ${update.available ? "btn-update" : "btn-quiet"}`}
+              onClick={() => void startUpdate()}
+              title={[
+                `${update.branch} · ${update.current}`,
+                update.dirty ? "local changes" : null,
+                update.checkedAt
+                  ? `checked ${formatElapsed((Date.now() - Date.parse(update.checkedAt)) / 1000)} ago`
+                  : "never checked",
+              ].filter(Boolean).join(" · ")}
+            >
+              ⟳ {updateLabel(update)}
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>
+            New session
+          </button>
+        </div>
       </header>
 
       {error && <p className="notice notice-error">{error}</p>}

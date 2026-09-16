@@ -11,6 +11,7 @@ import { SessionService } from "./sessions.js";
 import { attachTerminal, clampSize } from "./terminal.js";
 import { isValidSessionId } from "./validate.js";
 import { listExternalClaudes } from "./external.js";
+import { Updater } from "./updater.js";
 
 function tokenMatches(expected: string, given: unknown): boolean {
   if (typeof given !== "string") return false;
@@ -28,6 +29,8 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   const tmux = new Tmux("tmux", config.tmuxSocket);
   const sessions = new SessionService(tmux, config, app.log);
+  const updater = new Updater(config.repoRoot, config.updateBranch, app.log);
+  const updateSessionId = `${config.sessionPrefix}update`;
 
   // Optional shared-secret auth. Off when AUTH_TOKEN is empty. Applies to REST + WebSocket upgrades.
   if (config.authToken) {
@@ -71,11 +74,27 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   // Claude Code processes running in ordinary terminals (not in tmux). Shown read-only in the UI.
   app.get("/api/external", async () => listExternalClaudes(tmux));
 
+  // ---- self-update ------------------------------------------------------------------------------
+  app.get("/api/update", async () => updater.status());
+
+  // Starts deploy.sh in a tmux session and hands back its id: the browser attaches to it and
+  // watches the pull, the build, the sudo prompt and the restart of this very service.
+  app.post("/api/update", async () => ({ id: await updater.start(tmux, updateSessionId) }));
+
   app.get("/api/config", async () => ({
     hostname: os.hostname(),
     allowedDirectories: config.allowedDirectories,
     sessionPrefix: config.sessionPrefix,
   }));
+
+  // Fetching the remote periodically is what lets the list say "update available" without the
+  // user asking. unref() so a pending timer never keeps the process (or a test run) alive.
+  if (config.updateCheckMinutes > 0) {
+    void updater.check();
+    const timer = setInterval(() => void updater.check(), config.updateCheckMinutes * 60_000);
+    timer.unref();
+    app.addHook("onClose", async () => clearInterval(timer));
+  }
 
   // ---- WebSocket terminal -----------------------------------------------------------------------
   app.get<{ Params: { id: string }; Querystring: { cols?: string; rows?: string } }>(

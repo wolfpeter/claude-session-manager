@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { chipLabel, formatElapsed, needsYouCount, sortSessions, startedLabel, statusAge } from "../src/sessionView";
-import type { ClaudeSession } from "../src/types";
+import { chipLabel, formatElapsed, needsYouCount, sortSessions, startedLabel, statusAge, updateLabel } from "../src/sessionView";
+import type { ClaudeSession, UpdateStatus } from "../src/types";
 
 const session = (over: Partial<ClaudeSession> & { id: string }): ClaudeSession => ({
   name: over.id,
@@ -112,5 +112,23 @@ describe("chipLabel", () => {
   test("does not leave a dangling separator at the cut", () => {
     expect(chipLabel("api-refactor-x")).toBe("api-refactor-x");
     expect(chipLabel("api refactor round two")).toBe("api refactor…");
+  });
+});
+
+describe("updateLabel", () => {
+  const status = (over: Partial<UpdateStatus>): UpdateStatus => ({
+    supported: true, available: false, behind: 0, current: "abc1234", branch: "main", dirty: false, ...over,
+  });
+
+  test("counts the commits waiting", () => {
+    expect(updateLabel(status({ available: true, behind: 3 }))).toBe("Update · 3 new");
+  });
+
+  test("keeps it singular for one commit", () => {
+    expect(updateLabel(status({ available: true, behind: 1 }))).toBe("Update · 1 new");
+  });
+
+  test("says so when there is nothing to pull", () => {
+    expect(updateLabel(status({}))).toBe("Up to date");
   });
 });

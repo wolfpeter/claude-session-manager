@@ -52,6 +52,9 @@ code { color: var(--mint); }
 .btn-primary { background: var(--mint); border-color: var(--mint); color: #0e1a16; font-weight: 600; }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-quiet { background: transparent; border-color: transparent; color: var(--fg-muted); }
+/* Only calls for attention when there is actually something to pull. */
+.btn-update { border-color: var(--amber); color: var(--amber); }
+.btn-update:hover { border-color: var(--amber); background: rgba(224, 178, 87, 0.08); }
 .btn-quiet:hover { color: var(--fg); border-color: transparent; }
 
 /* ---- status dot ------------------------------------------------------------------------- */
@@ -92,6 +95,7 @@ code { color: var(--mint); }
   padding: 8px 0 16px;
 }
 .list-header h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .hostname { display: block; color: var(--mint); font-size: 13px; margin-top: 2px; }
 .term-host-name { color: var(--fg-muted); font-weight: 400; }
 
