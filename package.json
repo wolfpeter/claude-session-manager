@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Web UI for managing Claude Code CLI sessions running in tmux",
+  "license": "MIT",
   "workspaces": [
     "server",
     "web"

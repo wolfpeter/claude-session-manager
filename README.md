@@ -165,6 +165,10 @@ deploy/                   systemd unit template
 - **Start Claude in tmux from a desktop terminal** so it is manageable later: `tmux new -s claude-myproject -c ~/Projektek/myproject` then run `claude` inside.
 - **Terminal looks squashed after opening on the phone**: focus the desktop view again; `window-size latest` follows the last active client.
 
-## Later ideas (not in the MVP)
+## Later ideas
 
-Finer status (working / waiting for input), push notification when Claude waits, git branch info per session, rename, model and permission-mode selection when starting, HTTPS.
+Push notification when a session starts waiting (the state is already known; only the delivery is missing), the pending question shown in the list, quick replies from the list, git branch info per session, rename, model and permission-mode selection when starting, HTTPS.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
