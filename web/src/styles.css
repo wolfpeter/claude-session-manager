@@ -7,6 +7,8 @@
   --fg-muted: #8a909c;
   --mint: #8fd6bd;
   --amber: #e0b257;
+  --orange: #f0a35e;
+  --violet: #b9a3e3;
   --rose: #e28b8b;
   --focus: #9fc7ff;
   --font: "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", ui-monospace, Menlo, monospace;
@@ -61,10 +63,20 @@ code { color: var(--mint); }
   flex: none;
 }
 .status-running .dot, .dot.status-running { background: var(--mint); box-shadow: 0 0 0 3px rgba(143, 214, 189, 0.18); }
+.status-needs_input .dot, .dot.status-needs_input { background: var(--orange); box-shadow: 0 0 0 3px rgba(240, 163, 94, 0.22); }
 .status-waiting .dot, .dot.status-waiting { background: var(--amber); }
-.status-idle .dot, .dot.status-idle { background: var(--amber); }
+.status-stalled .dot, .dot.status-stalled { background: var(--violet); }
+.status-idle .dot, .dot.status-idle { background: var(--fg-muted); }
 .status-stopped .dot, .dot.status-stopped,
 .status-error .dot, .dot.status-error { background: var(--rose); }
+
+/* The status text repeats the dot's colour, so the state reads without decoding the colour code. */
+.session-status { color: var(--fg); }
+.status-needs_input .session-status { color: var(--orange); font-weight: 600; }
+.status-waiting .session-status { color: var(--amber); }
+.status-stalled .session-status { color: var(--violet); }
+.status-running .session-status { color: var(--mint); }
+.status-idle .session-status, .status-stopped .session-status { color: var(--fg-muted); }
 
 /* ---- list page -------------------------------------------------------------------------- */
 .list-page {
@@ -172,6 +184,49 @@ code { color: var(--mint); }
 .conn { font-size: 12px; color: var(--amber); }
 .conn-ended { color: var(--rose); }
 
+/* ---- session switcher (terminal page) --------------------------------------------------- */
+.term-switch {
+  display: flex; gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  flex: none;
+  /* One scrollable row: many sessions must not steal height from the terminal. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.term-switch::-webkit-scrollbar { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex: none;
+  max-width: 45vw;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chip:hover { color: var(--fg); border-color: var(--fg-muted); }
+.chip .dot { width: 7px; height: 7px; box-shadow: none; }
+.chip.status-needs_input { color: var(--orange); border-color: rgba(240, 163, 94, 0.5); }
+.chip.status-waiting { color: var(--amber); }
+.chip.status-stalled { color: var(--violet); }
+/* The session you are in: marked, not clickable. */
+.chip-current {
+  background: var(--bg-raised);
+  border-color: var(--fg-muted);
+  color: var(--fg);
+  cursor: default;
+  opacity: 1;
+}
+.chip:disabled { opacity: 1; }
+
 .term-page { position: relative; }
 .term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; touch-action: none; }
 .jump-bottom {
@@ -212,4 +267,10 @@ code { color: var(--mint); }
 
 @media (prefers-reduced-motion: no-preference) {
   .btn, .session-name { transition: color 120ms, border-color 120ms; }
+  /* Only the sessions blocked on an answer pulse; everything else stays still. */
+  .status-needs_input .dot { animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(240, 163, 94, 0.22); }
+    50% { box-shadow: 0 0 0 7px rgba(240, 163, 94, 0.05); }
+  }
 }

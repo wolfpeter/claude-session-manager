@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { api, wsUrl } from "./api";
 import { useHostname } from "./useHostname";
+import { chipLabel, needsYouCount, sortSessions, STATUS_LABEL } from "./sessionView";
 import type { ClaudeSession } from "./types";
 
 type ConnState = "connecting" | "open" | "reconnecting" | "ended";
@@ -11,6 +12,7 @@ type ConnState = "connecting" | "open" | "reconnecting" | "ended";
 interface Props {
   id: string;
   onBack: () => void;
+  onOpen: (id: string) => void;
   onError: (err: unknown) => void;
 }
 
@@ -28,21 +30,23 @@ const KEYS: { label: string; seq: string; title: string }[] = [
   { label: "^C", seq: "\x03", title: "Ctrl+C" },
 ];
 
-export function TerminalView({ id, onBack, onError }: Props) {
+export function TerminalView({ id, onBack, onOpen, onError }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const [conn, setConn] = useState<ConnState>("connecting");
-  const [session, setSession] = useState<ClaudeSession | null>(null);
+  const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [scrolledUp, setScrolledUp] = useState(false);
-  const hostname = useHostname();
+  const session = sessions.find((s) => s.id === id) ?? null;
+  const hostname = useHostname(needsYouCount(sessions));
 
-  // Session metadata (name + status) for the header, refreshed while visible.
+  // Every session's status, refreshed while visible: the header needs this one, the switcher
+  // needs the others. One list call is no more work for the server than asking for this session.
   useEffect(() => {
     let alive = true;
     const load = () =>
       api
-        .get(id)
-        .then((s) => alive && setSession(s))
+        .list()
+        .then((list) => alive && setSessions(list))
         .catch((err) => {
           onError(err);
         });
@@ -257,6 +261,27 @@ export function TerminalView({ id, onBack, onError }: Props) {
           Stop
         </button>
       </header>
+      {sessions.length > 1 && (
+        <nav className="term-switch" aria-label="Switch session">
+          {sortSessions(sessions).map((s) => {
+            const current = s.id === id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={`chip status-${s.status}${current ? " chip-current" : ""}`}
+                title={`${s.name}: ${STATUS_LABEL[s.status]}`}
+                aria-current={current || undefined}
+                disabled={current}
+                onClick={() => onOpen(s.id)}
+              >
+                <span className="dot" />
+                {chipLabel(s.name)}
+              </button>
+            );
+          })}
+        </nav>
+      )}
       <div className="term-host" ref={hostRef} />
       {scrolledUp && (
         <button

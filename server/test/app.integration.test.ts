@@ -31,7 +31,7 @@ beforeAll(async () => {
   const config: Config = {
     port: 0, host: "127.0.0.1", claudeCommand: "cat", sessionPrefix: "claude-",
     allowedDirectories: [root], authToken: "secret", historyLines: 100, logLevel: "silent",
-    tmuxSocket: socket, webDist: "",
+    tmuxSocket: socket, webDist: "", stallSeconds: 120,
   };
   app = await buildApp(config);
   base = await app.listen({ port: 0, host: "127.0.0.1" });

@@ -1,5 +1,12 @@
-/** Session status as exposed to the frontend. "waiting"/"error" are reserved for later. */
-export type SessionStatus = "running" | "waiting" | "idle" | "stopped" | "error";
+/**
+ * Session status as exposed to the frontend, derived from the pane contents (see status.ts).
+ * - running: Claude is working (its spinner is redrawing); a subagent or a long tool call counts too
+ * - needs_input: a blocking prompt is on screen (question, permission request, folder trust)
+ * - waiting: the turn ended, the input box is empty and Claude waits for the user
+ * - stalled: looks busy but tmux saw no output for a while
+ * - idle: the pane is back to a plain shell, Claude exited
+ */
+export type SessionStatus = "running" | "needs_input" | "waiting" | "stalled" | "idle" | "stopped" | "error";
 
 export interface ClaudeSession {
   /** tmux session name, e.g. "claude-api". Used in URLs. */
@@ -9,6 +16,14 @@ export interface ClaudeSession {
   workingDirectory: string;
   status: SessionStatus;
   createdAt?: string;
+  /** Short hint about the status, e.g. "Brewing…" or "Permission request". */
+  statusDetail?: string;
+  /** Seconds the current turn has been running, read from Claude's spinner. */
+  busyForSeconds?: number;
+  /** When the session entered this status (ISO). Reset when the backend restarts. */
+  statusSince?: string;
+  /** When the session's visible screen last changed (ISO). */
+  lastActivityAt?: string;
   /** Number of tmux clients currently attached (browser tabs + local terminals). */
   attached: number;
 }

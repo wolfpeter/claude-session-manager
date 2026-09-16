@@ -1,0 +1,27 @@
+
+● Skill(demo:planning)
+  ⎿  Successfully loaded skill
+
+● Looked at the project. Two things shape the plan:
+
+  - The list endpoint already returns everything the page needs.
+  - There is no test stage in CI yet.
+
+  The first decision is about scope:
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Scope of this round
+
+│ Should this round include the migration as well?
+
+❯ 1. No, a separate round (Recommended)
+     Keeps this change reviewable; the migration needs its own testing.
+  2. Yes, do both now
+     One deploy instead of two, but a bigger blast radius.
+  3. Only measure the risk
+     No code, just numbers to decide with.
+  4. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel

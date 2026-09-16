@@ -13,6 +13,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 ## Features
 
 - Lists every tmux session whose name starts with `claude-` (also ones you created by hand).
+- Shows at a glance what each session is doing: working, needs you (question, permission request, folder trust), waiting for you, may be stuck, or shell only. Sessions that need an answer sort to the top and their count appears in the tab title, so the phone shows it without opening anything.
 - Starts a new session: creates the tmux session in the chosen project directory and runs `claude` in it.
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
@@ -64,12 +65,31 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `ALLOWED_DIRECTORIES` | `~/Projektek` | Colon-separated roots; sessions can only be started inside these |
 | `AUTH_TOKEN` | empty | If set, every API and WebSocket request needs it (`X-Api-Key` header or `?token=`). The UI asks for it once and remembers it. |
 | `HISTORY_LINES` | `200` | Scrollback lines sent to the browser on connect |
+| `STALL_SECONDS` | `120` | A busy-looking session with no output for this long is shown as "May be stuck" |
 | `LOG_LEVEL` | `info` | pino log level |
 | `TMUX_SOCKET` | empty | Optional `tmux -L` socket name, to keep the manager's sessions on a separate tmux server |
 
 ## How it works
 
-- **Discovery**: `tmux list-sessions` with a custom format. Sessions created by the UI carry `@csm_name` (the display name) as a tmux session option; manual sessions fall back to the name without prefix. Status is `running` when the active pane runs `claude`/`node`, `idle` when only the shell is left, `stopped` if the pane is dead.
+- **Discovery**: one `tmux list-sessions` call with a custom format. Sessions created by the UI carry `@csm_name` (the display name) as a tmux session option, read straight from the format; manual sessions fall back to the name without prefix.
+- **Status**: the pane is not enough to tell "thinking" from "waiting", so for every session the server also captures the *visible* screen (`capture-pane`, no scrollback: an old prompt left in the history would be mistaken for the current state) and classifies it in `server/src/status.ts`:
+
+  | Status | What the pane shows |
+  | --- | --- |
+  | `needs_input` | a blocking prompt: a question menu, `Do you want to proceed?`, or the folder trust dialog |
+  | `running` | Claude's spinner line, e.g. `✽ Brewing… (2m 0s · ↓ 8.9k tokens)`. Its elapsed time keeps counting while a **subagent** or a long tool call runs, so a session with a subagent working is never mistaken for a stopped one |
+  | `stalled` | a spinner, but the visible screen has not changed for `STALL_SECONDS` |
+  | `waiting` | the empty input box, no spinner: the turn ended |
+  | `idle` / `stopped` | the pane is back to a plain shell / the pane is dead |
+
+  Two clocks are kept per session in memory (`SessionWatch`), because tmux cannot answer either question:
+
+  - *Is the session alive?* Not `#{session_activity}`: tmux only advances that while a client is attached, so a session nobody is watching - the normal case for this dashboard - would look frozen after a minute. Instead each poll fingerprints the captured screen; a changed screen means Claude is alive, an unchanged one is what `STALL_SECONDS` counts.
+  - *How long has it needed me?* Measured from the status change, not from the last output: Claude keeps redrawing its input box while it waits.
+
+  Both are in memory only, so after a backend restart every session starts counting from the restart.
+
+  The classifier is a pure function over captured pane text; `server/test/status.test.ts` runs it against real captures in `server/test/fixtures/`. When a future Claude Code version changes its UI, re-capture a fixture (`tmux capture-pane -p -J -t '=claude-x:'`) and adjust the patterns there.
 - **Create**: `tmux new-session -d -s <id> -c <dir>` then `tmux send-keys -l "<CLAUDE_COMMAND>" Enter`. The id is a slug of the name (`API refactor` becomes `claude-api-refactor`, `-2`, `-3` on collisions). The status bar is turned off for these sessions to save a row on phones; run `tmux set -t <id> status on` to bring it back.
 - **Terminal**: each WebSocket spawns `tmux attach-session -t =<id>` inside a PTY (node-pty). Browser input goes to the PTY, PTY output goes back as binary frames. Resizes resize the PTY, tmux picks them up. The tmux server option `window-size latest` makes the window follow the most recently active client, so a phone does not shrink the desktop view.
 - **Reconnect**: the browser retries with backoff (and immediately when the tab becomes visible). On connect the server sends the tmux scrollback, then tmux redraws the visible screen.

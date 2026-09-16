@@ -15,6 +15,8 @@ export interface TmuxSessionInfo {
   paneCommand: string;
   paneDead: boolean;
   attached: number;
+  /** Display name stored on the session as @csm_name; empty when not set. */
+  displayName: string;
 }
 
 export class TmuxError extends Error {
@@ -34,6 +36,7 @@ const LIST_FORMAT = [
   "#{pane_current_command}",
   "#{pane_dead}",
   "#{session_attached}",
+  "#{@csm_name}",
 ].join(SEP);
 
 export function parseListSessions(output: string): TmuxSessionInfo[] {
@@ -41,7 +44,7 @@ export function parseListSessions(output: string): TmuxSessionInfo[] {
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line) => {
-      const [name, created, path, panePath, paneCommand, paneDead, attached] = line.split(SEP);
+      const [name, created, path, panePath, paneCommand, paneDead, attached, displayName] = line.split(SEP);
       return {
         name,
         created: Number(created) || 0,
@@ -50,6 +53,7 @@ export function parseListSessions(output: string): TmuxSessionInfo[] {
         paneCommand,
         paneDead: paneDead === "1",
         attached: Number(attached) || 0,
+        displayName: displayName ?? "",
       };
     });
 }
@@ -130,17 +134,6 @@ export class Tmux {
     await this.run(["set-option", "-t", `=${name}:`, option, value]);
   }
 
-  /** Returns undefined when the option is not set. */
-  async getSessionOption(name: string, option: string): Promise<string | undefined> {
-    try {
-      const out = await this.run(["show-options", "-t", `=${name}:`, "-qv", option]);
-      const v = out.replace(/\n$/, "");
-      return v === "" ? undefined : v;
-    } catch {
-      return undefined;
-    }
-  }
-
   async setGlobalOption(option: string, value: string): Promise<void> {
     await this.run(["set-option", "-g", option, value]);
   }
@@ -186,6 +179,15 @@ export class Tmux {
     const windowRows = status === "off" ? rows : Math.max(1, rows - 1);
     await this.run(["resize-window", "-t", `=${name}:`, "-x", String(cols), "-y", String(windowRows)]);
     await this.run(["set-option", "-w", "-t", `=${name}:`, "window-size", "latest"]);
+  }
+
+  /**
+   * The visible screen as plain text: what a person attaching right now would see. Status
+   * detection reads this, so it must not include scrollback - an old permission prompt or
+   * spinner left in the history would be mistaken for the current state.
+   */
+  async capturePane(name: string): Promise<string> {
+    return this.run(["capture-pane", "-p", "-J", "-t", `=${name}:`]);
   }
 
   /** Scrollback (history above the visible screen) with colours, last `lines` lines. */

@@ -1,6 +1,7 @@
 import type { Config } from "./config.js";
+import { classifyPane, SessionWatch } from "./status.js";
 import type { Tmux, TmuxSessionInfo } from "./tmux.js";
-import type { ClaudeSession, SessionStatus } from "./types.js";
+import type { ClaudeSession } from "./types.js";
 import { assertSessionId, slugify, validateName, validateWorkingDirectory, ValidationError } from "./validate.js";
 
 const OPT_NAME = "@csm_name";
@@ -13,15 +14,6 @@ export class NotFoundError extends Error {
   }
 }
 
-/** Commands that mean "Claude Code is running in the pane". `claude` is a node script, so node counts too. */
-const CLAUDE_COMMANDS = new Set(["claude", "node", "bun"]);
-
-export function deriveStatus(info: TmuxSessionInfo): SessionStatus {
-  if (info.paneDead) return "stopped";
-  const cmd = info.paneCommand.split("/").pop() ?? "";
-  return CLAUDE_COMMANDS.has(cmd) ? "running" : "idle";
-}
-
 export interface Logger {
   info(obj: object, msg?: string): void;
   warn(obj: object, msg?: string): void;
@@ -29,19 +21,38 @@ export interface Logger {
 }
 
 export class SessionService {
+  /** Screen-change and status clocks kept between polls; see SessionWatch. */
+  private readonly watch = new SessionWatch();
+
   constructor(
     private readonly tmux: Tmux,
     private readonly config: Config,
     private readonly log: Logger,
   ) {}
 
-  private toSession(info: TmuxSessionInfo, name?: string): ClaudeSession {
+  /**
+   * Reads the session's visible pane and turns it into a status. One capture-pane call per
+   * session on top of the single list-sessions call; the list endpoint is polled every few
+   * seconds for a handful of sessions, so this stays cheap.
+   */
+  private async toSession(info: TmuxSessionInfo): Promise<ClaudeSession> {
+    const text = await this.tmux.capturePane(info.name).catch(() => "");
+    const now = Date.now();
+    const seen = this.watch.observePane(info.name, text, now);
+    const { status, detail, busyForSeconds } = classifyPane(
+      { paneDead: info.paneDead, paneCommand: info.paneCommand, text, secondsSinceChange: seen.secondsSinceChange },
+      { stallSeconds: this.config.stallSeconds },
+    );
     return {
       id: info.name,
-      name: name ?? info.name.slice(this.config.sessionPrefix.length),
+      name: info.displayName || info.name.slice(this.config.sessionPrefix.length),
       workingDirectory: info.panePath || info.path,
-      status: deriveStatus(info),
+      status,
+      statusDetail: detail,
+      statusSince: new Date(this.watch.markStatus(info.name, status, now)).toISOString(),
+      busyForSeconds,
       createdAt: info.created ? new Date(info.created * 1000).toISOString() : undefined,
+      lastActivityAt: new Date(seen.changedAt).toISOString(),
       attached: info.attached,
     };
   }
@@ -49,9 +60,8 @@ export class SessionService {
   /** Discovers every tmux session with the configured prefix (including manually created ones). */
   async list(): Promise<ClaudeSession[]> {
     const infos = (await this.tmux.listSessions()).filter((s) => s.name.startsWith(this.config.sessionPrefix));
-    const sessions = await Promise.all(
-      infos.map(async (info) => this.toSession(info, await this.tmux.getSessionOption(info.name, OPT_NAME))),
-    );
+    this.watch.retain(infos.map((info) => info.name));
+    const sessions = await Promise.all(infos.map((info) => this.toSession(info)));
     return sessions.sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "") || a.id.localeCompare(b.id));
   }
 

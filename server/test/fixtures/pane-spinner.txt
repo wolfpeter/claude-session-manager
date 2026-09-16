@@ -1,0 +1,37 @@
+
+  Testing: unit tests first, then the wiring, then a browser check.
+
+  Files touched: src/status.ts (new), src/sessions.ts, src/types.ts.
+
+  Does that look right?
+
+✻ Baked for 4m 11s · done 12:35
+
+❯ Looks good, go ahead
+
+● Skill(demo:test-driven-development)
+  ⎿  Successfully loaded skill
+
+  Ran 1 shell command
+
+● Starting with the tests, recording real pane captures as fixtures.
+
+  Ran 3 shell commands
+
+● Write(test/status.test.ts)
+  ⎿  Wrote 110 lines to test/status.test.ts
+       1 import { describe, expect, test } from "vitest";
+       2 import { classifyPane } from "../src/status.js";
+     … +100 lines
+
+● Reading 1 file, running 1 shell command…
+  ⎿  $ npm test
+
+✽ Brewing… (2m 0s · ↓ 8.9k tokens)
+  ⎿  Tip: Use /btw to ask a quick side question without interrupting Claude's current work
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ➜ demo · 5h 0% ↻17:40 · 7d 19% ↻h 08:00 · ctx 11% · Opus 5 (1M context) · git:(main) ✗
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

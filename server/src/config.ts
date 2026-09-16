@@ -1,5 +1,6 @@
 import os from "node:os";
 import path from "node:path";
+import { DEFAULT_STALL_SECONDS } from "./status.js";
 
 export interface Config {
   port: number;
@@ -12,6 +13,8 @@ export interface Config {
   logLevel: string;
   /** Optional tmux socket name (tmux -L). Empty = default server. */
   tmuxSocket: string;
+  /** A busy-looking session with no output for this long is reported as stalled. */
+  stallSeconds: number;
   /** Directory of the built frontend (index.html + assets). */
   webDist: string;
 }
@@ -44,6 +47,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     historyLines: int(env.HISTORY_LINES, 200),
     logLevel: env.LOG_LEVEL ?? "info",
     tmuxSocket: env.TMUX_SOCKET ?? "",
+    stallSeconds: int(env.STALL_SECONDS, DEFAULT_STALL_SECONDS),
     webDist: env.WEB_DIST ?? path.resolve(import.meta.dirname, "../../web/dist"),
   };
 }

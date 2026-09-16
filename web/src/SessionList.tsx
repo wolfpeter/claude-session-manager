@@ -2,15 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { NewSessionForm } from "./NewSessionForm";
 import { useHostname } from "./useHostname";
+import { needsYouCount, sortSessions, startedLabel, statusAge, STATUS_LABEL } from "./sessionView";
 import type { ClaudeSession, ExternalClaude } from "./types";
-
-const STATUS_LABEL: Record<ClaudeSession["status"], string> = {
-  running: "Claude running",
-  waiting: "Waiting for input",
-  idle: "Shell only, Claude exited",
-  stopped: "Stopped",
-  error: "Error",
-};
 
 function shortenPath(p: string): string {
   return p.replace(/^\/home\/[^/]+/, "~");
@@ -25,15 +18,6 @@ function duration(seconds: number): string {
   return `${Math.floor(h / 24)} d`;
 }
 
-function age(iso?: string): string {
-  if (!iso) return "";
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  if (h < 24) return `${h} h`;
-  return `${Math.floor(h / 24)} d`;
-}
 
 interface Props {
   onOpen: (id: string) => void;
@@ -45,7 +29,7 @@ export function SessionList({ onOpen, onError }: Props) {
   const [external, setExternal] = useState<ExternalClaude[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const hostname = useHostname();
+  const hostname = useHostname(sessions ? needsYouCount(sessions) : 0);
 
   const refresh = useCallback(async () => {
     try {
@@ -108,7 +92,7 @@ export function SessionList({ onOpen, onError }: Props) {
 
       {sessions && sessions.length > 0 && (
         <ul className="sessions">
-          {sessions.map((s) => (
+          {sortSessions(sessions).map((s) => (
             <li key={s.id} className={`session status-${s.status}`}>
               <button className="session-main" onClick={() => onOpen(s.id)} aria-label={`Open ${s.name}`}>
                 <span className="dot" title={STATUS_LABEL[s.status]} />
@@ -116,8 +100,12 @@ export function SessionList({ onOpen, onError }: Props) {
                   <span className="session-name">{s.name}</span>
                   <span className="session-path">{shortenPath(s.workingDirectory)}</span>
                   <span className="session-meta">
-                    <span>{STATUS_LABEL[s.status]}</span>
-                    {s.createdAt && <span>started {age(s.createdAt)} ago</span>}
+                    <span className="session-status">
+                      {STATUS_LABEL[s.status]}
+                      {statusAge(s) && ` · ${statusAge(s)}`}
+                    </span>
+                    {s.statusDetail && <span>{s.statusDetail}</span>}
+                    {s.createdAt && <span>{startedLabel(s.createdAt)}</span>}
                     {s.attached > 0 && <span>{s.attached} viewer{s.attached > 1 ? "s" : ""}</span>}
                   </span>
                 </span>

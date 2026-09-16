@@ -19,6 +19,7 @@ beforeAll(async () => {
   config = {
     port: 0, host: "127.0.0.1", claudeCommand: "echo hello-from-claude", sessionPrefix: "claude-",
     allowedDirectories: [root], authToken: "", historyLines: 50, logLevel: "silent", tmuxSocket: socket, webDist: "",
+    stallSeconds: 120,
   };
 });
 
@@ -62,6 +63,29 @@ describe("SessionService with real tmux", () => {
     await expect(svc.remove("claude-api-refactor-2")).rejects.toThrow(/not found/i);
     await expect(svc.remove("unrelated")).rejects.toThrow(/Invalid session id/);
     await expect(svc.get("claude-nope")).rejects.toThrow(/not found/i);
+  });
+
+  it("reports what the pane is doing, read from the pane itself", async () => {
+    const svc = new SessionService(tmux, config, silent);
+    await tmux.newSession("claude-busy", root);
+    await tmux.sendCommand(
+      "claude-busy",
+      `node -e "console.log('\u271d Brewing\u2026 (2m 0s \u00b7 8.9k tokens)'); setInterval(() => {}, 1000)"`,
+    );
+    await new Promise((r) => setTimeout(r, 800));
+
+    const sessions = await svc.list();
+    const busy = sessions.find((s) => s.id === "claude-busy");
+    expect(busy?.status).toBe("running");
+    expect(busy?.statusDetail).toBe("Brewing\u2026");
+    expect(busy?.busyForSeconds).toBe(120);
+    expect(Date.parse(busy?.lastActivityAt ?? "")).toBeGreaterThan(0);
+
+    // a pane that is back to the shell is idle, whatever scrolled by earlier
+    const shell = sessions.find((s) => s.id === "claude-manual");
+    expect(shell?.status).toBe("idle");
+
+    await svc.remove("claude-busy");
   });
 
   it("rejects bad input without touching tmux", async () => {

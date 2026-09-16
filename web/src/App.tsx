@@ -37,7 +37,15 @@ export function App() {
   }, []);
 
   if (route.page === "session") {
-    return <TerminalView key={`${route.id}:${authNonce}`} id={route.id} onBack={() => navigate("/")} onError={handleError} />;
+    return (
+      <TerminalView
+        key={`${route.id}:${authNonce}`}
+        id={route.id}
+        onBack={() => navigate("/")}
+        onOpen={(id) => navigate(`/sessions/${encodeURIComponent(id)}`)}
+        onError={handleError}
+      />
+    );
   }
   return <SessionList key={authNonce} onOpen={(id) => navigate(`/sessions/${encodeURIComponent(id)}`)} onError={handleError} />;
 }
