@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { api, wsUrl } from "./api";
+import { copyText } from "./clipboard";
 import { useHostname } from "./useHostname";
 import { chipLabel, needsYouCount, sortSessions, STATUS_LABEL } from "./sessionView";
 import type { ClaudeSession } from "./types";
@@ -36,6 +37,10 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
   const [conn, setConn] = useState<ConnState>("connecting");
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [scrolledUp, setScrolledUp] = useState(false);
+  // xterm keeps its own selection and copies nothing on its own; this drives the copy button.
+  const [hasSelection, setHasSelection] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyResetRef = useRef<number | undefined>(undefined);
   const session = sessions.find((s) => s.id === id) ?? null;
   const hostname = useHostname(needsYouCount(sessions));
 
@@ -191,6 +196,8 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
       setScrolledUp(buf.viewportY < buf.baseY);
     });
 
+    const onSelection = term.onSelectionChange(() => setHasSelection(term.hasSelection()));
+
     const ro = new ResizeObserver(() => {
       fit.fit();
       sendResize();
@@ -219,6 +226,8 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
       host.removeEventListener("touchend", onTouchEnd);
       host.removeEventListener("touchcancel", onTouchEnd);
       onScroll.dispose();
+      onSelection.dispose();
+      window.clearTimeout(copyResetRef.current);
       onData.dispose();
       onBinary.dispose();
       ws?.close();
@@ -226,6 +235,14 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
       termRef.current = null;
     };
   }, [id]);
+
+  const copySelection = async () => {
+    const ok = await copyText(termRef.current?.getSelection() ?? "");
+    setCopyState(ok ? "copied" : "failed");
+    window.clearTimeout(copyResetRef.current);
+    copyResetRef.current = window.setTimeout(() => setCopyState("idle"), 1500);
+    termRef.current?.focus();
+  };
 
   // term.input() feeds the sequence through onData, so it travels the same path as typed keys.
   const sendKey = (seq: string) => {
@@ -283,6 +300,18 @@ export function TerminalView({ id, onBack, onOpen, onError }: Props) {
         </nav>
       )}
       <div className="term-host" ref={hostRef} />
+      {hasSelection && (
+        <button
+          type="button"
+          className="copy-selection"
+          // Keep the selection and the terminal focus: the default mousedown would take both.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => void copySelection()}
+          aria-label="Copy the selected text"
+        >
+          {copyState === "copied" ? "✓ copied" : copyState === "failed" ? "copy failed" : "⧉ copy"}
+        </button>
+      )}
       {scrolledUp && (
         <button
           type="button"

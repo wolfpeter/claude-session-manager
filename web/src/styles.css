@@ -229,7 +229,7 @@ code { color: var(--mint); }
 
 .term-page { position: relative; }
 .term-host { flex: 1; min-height: 0; padding: 4px 0 0 6px; touch-action: none; }
-.jump-bottom {
+.jump-bottom, .copy-selection {
   position: absolute;
   right: 12px;
   bottom: calc(64px + var(--safe-b));
@@ -242,7 +242,19 @@ code { color: var(--mint); }
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-@media (pointer: fine) { .jump-bottom { bottom: 16px; } }
+/* Quieter than "jump to latest", and on the other side so the two never overlap. */
+.copy-selection {
+  right: auto;
+  left: 12px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  font-weight: 400;
+}
+.copy-selection:hover { border-color: var(--fg-muted); }
+
+/* No key bar on a desktop, so both buttons can sit lower. */
+@media (pointer: fine) { .jump-bottom, .copy-selection { bottom: 16px; } }
 .term-host .xterm { height: 100%; }
 .term-host .xterm-viewport { overflow-y: auto !important; }
 
