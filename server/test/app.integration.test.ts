@@ -33,6 +33,7 @@ beforeAll(async () => {
     allowedDirectories: [root], authToken: "secret", historyLines: 100, logLevel: "silent",
     tmuxSocket: socket, webDist: "", stallSeconds: 120,
     repoRoot: root, updateBranch: "main", updateCheckMinutes: 0,
+    browserMouseReporting: false,
   };
   app = await buildApp(config);
   base = await app.listen({ port: 0, host: "127.0.0.1" });

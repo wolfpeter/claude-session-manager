@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import * as pty from "node-pty";
 import type { WebSocket } from "ws";
+import { MouseModeFilter } from "./mousemode.js";
 import { Tmux } from "./tmux.js";
 import type { Logger } from "./sessions.js";
 import type { ClientMessage, ServerMessage } from "./types.js";
@@ -9,6 +10,8 @@ export interface TerminalOptions {
   cols: number;
   rows: number;
   historyLines: number;
+  /** Pass the application's mouse reporting through to the browser (see Config). */
+  mouseReporting: boolean;
 }
 
 /**
@@ -79,8 +82,13 @@ export async function attachTerminal(
 
   send({ type: "ready", id: sessionId });
 
+  // Without this the browser terminal follows Claude into mouse mode, where a drag is sent to
+  // Claude instead of selecting text.
+  const mouseFilter = opts.mouseReporting ? undefined : new MouseModeFilter();
   term.onData((data) => {
-    if (ws.readyState === ws.OPEN) ws.send(Buffer.from(data, "utf8"));
+    if (ws.readyState !== ws.OPEN) return;
+    const out = mouseFilter ? mouseFilter.push(data) : data;
+    if (out) ws.send(Buffer.from(out, "utf8"));
   });
 
   term.onExit(({ exitCode }) => {

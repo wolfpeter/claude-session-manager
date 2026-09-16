@@ -118,6 +118,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
           cols: clampSize(req.query.cols, 80),
           rows: clampSize(req.query.rows, 24),
           historyLines: config.historyLines,
+          mouseReporting: config.browserMouseReporting,
         },
         app.log,
       );

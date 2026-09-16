@@ -21,6 +21,12 @@ export interface Config {
   updateBranch: string;
   /** How often to fetch the remote to see whether an update is waiting. 0 disables the check. */
   updateCheckMinutes: number;
+  /**
+   * Whether browser clients get the terminal's mouse reporting. Off by default: while it is on,
+   * xterm hands drags to the application instead of selecting text, so copying needs Shift and is
+   * impossible on a touch screen. Turn it on to click inside Claude's UI from the browser.
+   */
+  browserMouseReporting: boolean;
   /** Directory of the built frontend (index.html + assets). */
   webDist: string;
 }
@@ -59,6 +65,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     repoRoot: env.REPO_ROOT ?? path.resolve(import.meta.dirname, "../.."),
     updateBranch: env.UPDATE_BRANCH ?? "main",
     updateCheckMinutes: int(env.UPDATE_CHECK_MINUTES, 15),
+    browserMouseReporting: (env.BROWSER_MOUSE_REPORTING ?? "off").toLowerCase() === "on",
     webDist: env.WEB_DIST ?? path.resolve(import.meta.dirname, "../../web/dist"),
   };
 }

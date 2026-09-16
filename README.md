@@ -18,7 +18,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
 - URLs in the output are tappable and open in a new tab (login links from `gcloud auth login --no-launch-browser` and similar flows).
-- Copy button in the terminal: copies the selection when there is one, otherwise everything on the visible screen. It falls back to the old `execCommand` route because `navigator.clipboard` does not exist over plain HTTP on a LAN or Tailscale address. **Claude Code turns on the terminal's mouse reporting, so a plain drag goes to Claude instead of selecting - hold Shift to select** (the button says so while mouse reporting is on). On a phone there is no selection at all, which is what "copy screen" is for.
+- Copy button in the terminal: copies the selection when there is one, otherwise everything on the visible screen (the phone answer, where xterm has no touch selection). It falls back to the old `execCommand` route because `navigator.clipboard` does not exist over plain HTTP on a LAN or Tailscale address.
 - Stop button ends the tmux session only. Project files are never touched.
 - Update button in the list header: says whether the checkout is behind its remote, and starts `deploy.sh` in a tmux session you watch in the browser (see below).
 - Claude Code processes started in ordinary terminals (outside tmux) are listed too, read-only: the browser cannot attach to them, but you see where they run and for how long.
@@ -89,6 +89,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `AUTH_TOKEN` | empty | If set, every API and WebSocket request needs it (`X-Api-Key` header or `?token=`). The UI asks for it once and remembers it. |
 | `HISTORY_LINES` | `200` | Scrollback lines sent to the browser on connect |
 | `STALL_SECONDS` | `120` | A busy-looking session with no output for this long is shown as "May be stuck" |
+| `BROWSER_MOUSE_REPORTING` | `off` | `on` passes the application's mouse reporting to the browser: you can click inside Claude's UI, but a drag no longer selects text (Shift+drag does) |
 | `UPDATE_BRANCH` | `main` | Branch the update button follows |
 | `UPDATE_CHECK_MINUTES` | `15` | How often the remote is fetched to see whether an update is waiting; `0` disables the check |
 | `REPO_ROOT` | the checkout this runs from | Where the update button runs `deploy.sh` |
@@ -121,6 +122,12 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 - **Reconnect**: the browser retries with backoff (and immediately when the tab becomes visible). On connect the server sends the tmux scrollback, then tmux redraws the visible screen.
 - **Scrollback on the phone**: browser clients attach with `TERM=tmux-256color`, and the server adds `tmux-256color:smcup@:rmcup@` to the tmux `terminal-overrides` option. Without the alternate screen, lines scrolling off the top stay in xterm.js scrollback, so swiping up in the terminal scrolls history (the page itself never scrolls, so no pull-to-refresh). Desktop tmux clients use a different TERM and are not affected.
 - **Backend restarts**: the systemd unit uses `KillMode=process`, so stopping or restarting the service only kills Node; the tmux server started from it stays alive and is rediscovered on start.
+
+## Selecting text in the browser
+
+Claude Code turns on the terminal's mouse reporting (any-event + SGR), which tells a terminal to hand every click and drag to the application. In a browser that means no text selection and therefore nothing to copy - Shift+drag is the usual escape hatch, and on a touch screen there is none at all.
+
+Since a browser client gets nothing useful out of mouse reporting anyway, the server removes those mode sequences from the stream it sends to the browser (`server/src/mousemode.ts`), including ones split across chunks. xterm then stays in plain mode and a drag selects text like anywhere else; tmux, Claude and local terminal clients are untouched, since only this client's copy of the stream is filtered. Set `BROWSER_MOUSE_REPORTING=on` to get the old behaviour back.
 
 ## Updating from the browser
 
