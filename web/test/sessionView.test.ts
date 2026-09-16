@@ -102,7 +102,7 @@ describe("startedLabel", () => {
 
 describe("chipLabel", () => {
   test("leaves a name that fits alone", () => {
-    expect(chipLabel("miskolc")).toBe("miskolc");
+    expect(chipLabel("api-gateway")).toBe("api-gateway");
   });
 
   test("shortens a long name to fit the switcher", () => {

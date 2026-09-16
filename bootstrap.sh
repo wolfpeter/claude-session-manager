@@ -2,7 +2,7 @@
 # One-command install of Claude Session Manager on a fresh Linux machine:
 # checks what is missing, offers to install it, clones the repo, then runs install.sh.
 #
-#   curl -fsSL https://raw.githubusercontent.com/__REPO__/main/bootstrap.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/wolfpeter/claude-session-manager/main/bootstrap.sh | bash
 #
 # Environment overrides:
 #   CSM_DIR=~/apps/csm        where to clone (default: ~/Projektek/claude-session-manager)
@@ -12,7 +12,7 @@
 #   CSM_YES=1                 do not ask before installing system packages
 set -euo pipefail
 
-REPO=${CSM_REPO:-https://github.com/__REPO__.git}
+REPO=${CSM_REPO:-https://github.com/wolfpeter/claude-session-manager.git}
 BRANCH=${CSM_BRANCH:-main}
 DIR=${CSM_DIR:-$HOME/Projektek/claude-session-manager}
 SERVICE_MODE=${CSM_SERVICE:-system}

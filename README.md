@@ -33,15 +33,35 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 
 ## Install
 
+On a fresh machine, one command does everything:
+
 ```bash
-git clone <this repo> ~/Projektek/claude-session-manager
-cd ~/Projektek/claude-session-manager
-./install.sh            # system service, asks for sudo
-# or, without sudo:
-./install.sh --user     # user service; add `sudo loginctl enable-linger $USER` for start at boot
+curl -fsSL https://raw.githubusercontent.com/wolfpeter/claude-session-manager/main/bootstrap.sh | bash
 ```
 
-The script checks Node/tmux/claude, installs dependencies, builds the frontend and backend, writes a `.env` from `.env.example` if none exists, installs the systemd unit and starts it.
+It lists what is missing (git, tmux, Node.js 20+, build tools for `node-pty`), asks once before installing those system packages, clones the repo to `~/Projektek/claude-session-manager`, then runs `install.sh`. Claude Code itself is not installed for you: if `claude` is not on PATH it says so, and `npm install -g @anthropic-ai/claude-code` plus one interactive `claude` login is all it needs.
+
+Environment overrides:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `CSM_DIR` | `~/Projektek/claude-session-manager` | Where to clone |
+| `CSM_REPO` | this repo | Clone from a fork or a local path instead |
+| `CSM_BRANCH` | `main` | Branch to check out |
+| `CSM_SERVICE` | `system` | `user` for a user service, `none` to build without systemd |
+| `CSM_YES` | unset | Skip the question before installing system packages |
+| `CSM_ALLOWED_DIRS` | `~/Projektek` if it exists, else `$HOME` | What goes into `ALLOWED_DIRECTORIES` |
+| `CSM_NO_TOKEN` | unset | Leave `AUTH_TOKEN` empty instead of generating one |
+
+If you already have the checkout, `install.sh` is the same thing without the cloning:
+
+```bash
+./install.sh              # system service, asks for sudo
+./install.sh --user       # user service; add `sudo loginctl enable-linger $USER` for start at boot
+./install.sh --no-service # dependencies, build and .env only
+```
+
+It checks Node/tmux/claude, installs dependencies, builds the frontend and backend, writes a `.env` if none exists (with a generated `AUTH_TOKEN`, printed at the end - the service listens on every interface and whoever reaches it gets a shell through Claude), installs the systemd unit and starts it.
 
 Then open `http://<machine>:3000/`. Over Tailscale that is your machine's Tailscale IP or MagicDNS name.
 
