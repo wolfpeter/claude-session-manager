@@ -6,6 +6,7 @@
 #
 # Environment overrides for the generated .env (only used when there is no .env yet):
 #   CSM_ALLOWED_DIRS=/srv/code   colon-separated roots sessions may be started in
+#   CSM_PORT=8123                HTTP port (default 31415; the next free one is used if taken)
 #   CSM_NO_TOKEN=1               leave AUTH_TOKEN empty instead of generating one
 set -euo pipefail
 
@@ -43,6 +44,12 @@ log "Building frontend and backend"
 npm run build
 
 # config --------------------------------------------------------------------------------------
+# Node is already a hard requirement, so it is the most portable way to ask "can I bind this?".
+port_free() {
+  node -e 'const net=require("net");const s=net.createServer();s.once("error",()=>process.exit(1));
+           s.listen(Number(process.argv[1]),"0.0.0.0",()=>s.close(()=>process.exit(0)))' "$1" 2>/dev/null
+}
+
 if [[ ! -f .env ]]; then
   # Where sessions may be started: the caller's choice, else the home directory.
   ALLOWED=${CSM_ALLOWED_DIRS:-$HOME}
@@ -51,9 +58,21 @@ if [[ ! -f .env ]]; then
   if [[ ${CSM_NO_TOKEN:-} == 1 ]]; then TOKEN=""
   else TOKEN=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
   fi
-  sed -e "s|^ALLOWED_DIRECTORIES=.*|ALLOWED_DIRECTORIES=$ALLOWED|" -e "s|^AUTH_TOKEN=.*|AUTH_TOKEN=$TOKEN|" .env.example > .env
+  # A busy port is the one failure systemd reports as a bare "status=1/FAILURE", so find a free
+  # one now instead of letting the service crash-loop after the install says "Done".
+  WANT_PORT=${CSM_PORT:-$(grep -E '^PORT=' .env.example | cut -d= -f2)}
+  PORT=$WANT_PORT
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    port_free "$PORT" && break
+    PORT=$((PORT + 1))
+  done
+  [[ $PORT == "$WANT_PORT" ]] || warn_port="port $WANT_PORT is taken, using $PORT instead"
+
+  sed -e "s|^PORT=.*|PORT=$PORT|" -e "s|^ALLOWED_DIRECTORIES=.*|ALLOWED_DIRECTORIES=$ALLOWED|" \
+      -e "s|^AUTH_TOKEN=.*|AUTH_TOKEN=$TOKEN|" .env.example > .env
   chmod 600 .env
-  log "Created .env (ALLOWED_DIRECTORIES=$ALLOWED)"
+  log "Created .env (PORT=$PORT, ALLOWED_DIRECTORIES=$ALLOWED)"
+  [[ -n ${warn_port:-} ]] && echo "    ${warn_port}"
 fi
 
 # 5-6. systemd ------------------------------------------------------------------------------------
@@ -93,7 +112,7 @@ fi
 
 PORT=$(grep -E '^PORT=' .env | cut -d= -f2)
 TOKEN=$(grep -E '^AUTH_TOKEN=' .env | cut -d= -f2-)
-log "Done. Open http://$(hostname -I 2>/dev/null | awk '{print $1}'):${PORT:-3000}/ (or the Tailscale address)."
+log "Done. Open http://$(hostname -I 2>/dev/null | awk '{print $1}'):${PORT:-31415}/ (or the Tailscale address)."
 if [[ -n $TOKEN ]]; then
   echo "    Access token (the page asks for it once, it is in .env):"
   echo "    $TOKEN"

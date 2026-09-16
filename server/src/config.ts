@@ -40,7 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   return {
-    port: int(env.PORT, 3000),
+    port: int(env.PORT, 31415),
     host: env.HOST ?? "0.0.0.0",
     claudeCommand: env.CLAUDE_COMMAND ?? "claude",
     sessionPrefix,

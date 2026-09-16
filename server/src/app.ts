@@ -130,3 +130,18 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   return app;
 }
+
+/**
+ * Turns a listen() failure into one line a person can act on. systemd only shows the exit code,
+ * so an unexplained "status=1/FAILURE" is what the user is left with otherwise.
+ */
+export function explainListenError(err: unknown, port: number): string {
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code === "EADDRINUSE") {
+    return `port ${port} is already in use. Set PORT in .env to a free port and restart the service.`;
+  }
+  if (code === "EACCES") {
+    return `port ${port} needs root privileges. Set PORT in .env to a port above 1024 and restart the service.`;
+  }
+  return err instanceof Error ? err.message : String(err);
+}

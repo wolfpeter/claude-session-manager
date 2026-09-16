@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import WebSocket from "ws";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.js";
+import { buildApp, explainListenError } from "../src/app.js";
 import { Tmux } from "../src/tmux.js";
 import type { Config } from "../src/config.js";
 import type { ClaudeSession } from "../src/types.js";
@@ -117,5 +117,29 @@ describe("WebSocket terminal", () => {
     const again = await collect(ws2, 800);
     expect(again).toContain("ping-from-browser");
     ws2.close();
+  });
+});
+
+describe("explainListenError", () => {
+  it("names the busy port and how to change it", () => {
+    const err = Object.assign(new Error("listen EADDRINUSE: address already in use 0.0.0.0:31415"), {
+      code: "EADDRINUSE",
+    });
+
+    expect(explainListenError(err, 31415)).toBe(
+      "port 31415 is already in use. Set PORT in .env to a free port and restart the service.",
+    );
+  });
+
+  it("explains a privileged port", () => {
+    const err = Object.assign(new Error("listen EACCES"), { code: "EACCES" });
+
+    expect(explainListenError(err, 80)).toBe(
+      "port 80 needs root privileges. Set PORT in .env to a port above 1024 and restart the service.",
+    );
+  });
+
+  it("passes anything else through", () => {
+    expect(explainListenError(new Error("something else"), 31415)).toBe("something else");
   });
 });

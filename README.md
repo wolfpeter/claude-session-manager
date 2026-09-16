@@ -52,6 +52,7 @@ Environment overrides:
 | `CSM_YES` | unset | Skip the question before installing system packages |
 | `CSM_ALLOWED_DIRS` | `$HOME` | What goes into `ALLOWED_DIRECTORIES` |
 | `CSM_NO_TOKEN` | unset | Leave `AUTH_TOKEN` empty instead of generating one |
+| `CSM_PORT` | `31415` | HTTP port; if it is taken, the installer moves up until it finds a free one |
 
 If you already have the checkout, `install.sh` is the same thing without the cloning:
 
@@ -63,7 +64,7 @@ If you already have the checkout, `install.sh` is the same thing without the clo
 
 It checks Node/tmux/claude, installs dependencies, builds the frontend and backend, writes a `.env` if none exists (with a generated `AUTH_TOKEN`, printed at the end - the service listens on every interface and whoever reaches it gets a shell through Claude), installs the systemd unit and starts it.
 
-Then open `http://<machine>:3000/`. Over Tailscale that is your machine's Tailscale IP or MagicDNS name.
+Then open `http://<machine>:31415/`. Over Tailscale that is your machine's Tailscale IP or MagicDNS name.
 
 ## Update
 
@@ -78,7 +79,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `PORT` | `3000` | HTTP port |
+| `PORT` | `31415` | HTTP port. Picked to stay clear of the usual 3000/8000/8080 crowd and of Linux's ephemeral range (32768-60999), so nothing else grabs it first. |
 | `HOST` | `0.0.0.0` | Bind address. Use your Tailscale IP to listen only there. |
 | `CLAUDE_COMMAND` | `claude` | Command typed into each new tmux session |
 | `SESSION_PREFIX` | `claude-` | Only tmux sessions with this prefix are shown and managed |
@@ -140,7 +141,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 
 ```bash
 npm install
-npm run dev        # backend on :3000 (tsx watch) + Vite dev server on :5173 with proxy
+npm run dev        # backend on :31415 (tsx watch) + Vite dev server on :5173 with proxy
 npm test           # unit + integration tests (the integration tests start a private tmux server)
 npm run typecheck
 npm run build
