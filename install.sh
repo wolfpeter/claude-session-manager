@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # Installs Claude Session Manager as a systemd service.
-#   ./install.sh          system service (needs sudo), starts at boot, runs as the current user
-#   ./install.sh --user   user service (no sudo); run `loginctl enable-linger $USER` (once, as root) for boot start
+#   ./install.sh               system service (needs sudo), starts at boot, runs as the current user
+#   ./install.sh --user        user service (no sudo); run `loginctl enable-linger $USER` (once, as root) for boot start
+#   ./install.sh --no-service  dependencies, build and .env only; no systemd
+#
+# Environment overrides for the generated .env (only used when there is no .env yet):
+#   CSM_ALLOWED_DIRS=/srv/code   colon-separated roots sessions may be started in
+#   CSM_NO_TOKEN=1               leave AUTH_TOKEN empty instead of generating one
 set -euo pipefail
 
 cd "$(dirname "$0")"
 DIR=$(pwd)
 MODE=system
-[[ "${1:-}" == "--user" ]] && MODE=user
+case "${1:-}" in
+  --user) MODE=user ;;
+  --no-service) MODE=none ;;
+  "") ;;
+  *) echo "unknown option: $1 (expected --user or --no-service)" >&2; exit 2 ;;
+esac
 SERVICE=claude-session-manager
 
 log() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
@@ -34,8 +44,19 @@ npm run build
 
 # config --------------------------------------------------------------------------------------
 if [[ ! -f .env ]]; then
-  sed "s|/home/wopi/Projektek|$HOME/Projektek|" .env.example > .env
-  log "Created .env from .env.example. Edit ALLOWED_DIRECTORIES there if your projects live elsewhere."
+  # Where sessions may be started: the caller's choice, else ~/Projektek if it exists, else $HOME.
+  if [[ -n ${CSM_ALLOWED_DIRS:-} ]]; then ALLOWED=$CSM_ALLOWED_DIRS
+  elif [[ -d $HOME/Projektek ]]; then ALLOWED=$HOME/Projektek
+  else ALLOWED=$HOME
+  fi
+  # A token by default: the service listens on every interface, and anyone who reaches it gets a
+  # shell through Claude. Empty it in .env if the machine is truly private.
+  if [[ ${CSM_NO_TOKEN:-} == 1 ]]; then TOKEN=""
+  else TOKEN=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  fi
+  sed -e "s|^ALLOWED_DIRECTORIES=.*|ALLOWED_DIRECTORIES=$ALLOWED|" -e "s|^AUTH_TOKEN=.*|AUTH_TOKEN=$TOKEN|" .env.example > .env
+  chmod 600 .env
+  log "Created .env (ALLOWED_DIRECTORIES=$ALLOWED)"
 fi
 
 # 5-6. systemd ------------------------------------------------------------------------------------
@@ -50,7 +71,9 @@ render() {
     deploy/$SERVICE.service
 }
 
-if [[ $MODE == system ]]; then
+if [[ $MODE == none ]]; then
+  log "Skipping systemd (--no-service). Start it by hand with: npm start"
+elif [[ $MODE == system ]]; then
   log "Installing system service (sudo)"
   render | sudo tee /etc/systemd/system/$SERVICE.service >/dev/null
   sudo systemctl daemon-reload
@@ -72,4 +95,9 @@ else
 fi
 
 PORT=$(grep -E '^PORT=' .env | cut -d= -f2)
+TOKEN=$(grep -E '^AUTH_TOKEN=' .env | cut -d= -f2-)
 log "Done. Open http://$(hostname -I 2>/dev/null | awk '{print $1}'):${PORT:-3000}/ (or the Tailscale address)."
+if [[ -n $TOKEN ]]; then
+  echo "    Access token (the page asks for it once, it is in .env):"
+  echo "    $TOKEN"
+fi
