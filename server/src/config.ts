@@ -26,7 +26,9 @@ function int(value: string | undefined, fallback: number): number {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const home = os.homedir();
-  const allowed = (env.ALLOWED_DIRECTORIES ?? path.join(home, "Projektek"))
+  // No default project folder is assumed: without ALLOWED_DIRECTORIES, sessions may start
+  // anywhere under the user's home. install.sh writes a narrower value into .env.
+  const allowed = (env.ALLOWED_DIRECTORIES ?? home)
     .split(":")
     .map((d) => d.trim())
     .filter(Boolean)

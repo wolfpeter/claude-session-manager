@@ -44,11 +44,8 @@ npm run build
 
 # config --------------------------------------------------------------------------------------
 if [[ ! -f .env ]]; then
-  # Where sessions may be started: the caller's choice, else ~/Projektek if it exists, else $HOME.
-  if [[ -n ${CSM_ALLOWED_DIRS:-} ]]; then ALLOWED=$CSM_ALLOWED_DIRS
-  elif [[ -d $HOME/Projektek ]]; then ALLOWED=$HOME/Projektek
-  else ALLOWED=$HOME
-  fi
+  # Where sessions may be started: the caller's choice, else the home directory.
+  ALLOWED=${CSM_ALLOWED_DIRS:-$HOME}
   # A token by default: the service listens on every interface, and anyone who reaches it gets a
   # shell through Claude. Empty it in .env if the machine is truly private.
   if [[ ${CSM_NO_TOKEN:-} == 1 ]]; then TOKEN=""

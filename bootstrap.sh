@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/wolfpeter/claude-session-manager/main/bootstrap.sh | bash
 #
 # Environment overrides:
-#   CSM_DIR=~/apps/csm        where to clone (default: ~/Projektek/claude-session-manager)
+#   CSM_DIR=~/apps/csm        where to clone (default: ~/claude-session-manager)
 #   CSM_REPO=<git url>        clone from elsewhere, e.g. a fork or a local path
 #   CSM_BRANCH=main           branch to check out
 #   CSM_SERVICE=system|user|none   systemd mode (default: system); "none" installs and builds only
@@ -14,7 +14,7 @@ set -euo pipefail
 
 REPO=${CSM_REPO:-https://github.com/wolfpeter/claude-session-manager.git}
 BRANCH=${CSM_BRANCH:-main}
-DIR=${CSM_DIR:-$HOME/Projektek/claude-session-manager}
+DIR=${CSM_DIR:-$HOME/claude-session-manager}
 SERVICE_MODE=${CSM_SERVICE:-system}
 
 log() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }

@@ -39,18 +39,18 @@ On a fresh machine, one command does everything:
 curl -fsSL https://raw.githubusercontent.com/wolfpeter/claude-session-manager/main/bootstrap.sh | bash
 ```
 
-It lists what is missing (git, tmux, Node.js 20+, build tools for `node-pty`), asks once before installing those system packages, clones the repo to `~/Projektek/claude-session-manager`, then runs `install.sh`. Claude Code itself is not installed for you: if `claude` is not on PATH it says so, and `npm install -g @anthropic-ai/claude-code` plus one interactive `claude` login is all it needs.
+It lists what is missing (git, tmux, Node.js 20+, build tools for `node-pty`), asks once before installing those system packages, clones the repo to `~/claude-session-manager`, then runs `install.sh`. Claude Code itself is not installed for you: if `claude` is not on PATH it says so, and `npm install -g @anthropic-ai/claude-code` plus one interactive `claude` login is all it needs.
 
 Environment overrides:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `CSM_DIR` | `~/Projektek/claude-session-manager` | Where to clone |
+| `CSM_DIR` | `~/claude-session-manager` | Where to clone |
 | `CSM_REPO` | this repo | Clone from a fork or a local path instead |
 | `CSM_BRANCH` | `main` | Branch to check out |
 | `CSM_SERVICE` | `system` | `user` for a user service, `none` to build without systemd |
 | `CSM_YES` | unset | Skip the question before installing system packages |
-| `CSM_ALLOWED_DIRS` | `~/Projektek` if it exists, else `$HOME` | What goes into `ALLOWED_DIRECTORIES` |
+| `CSM_ALLOWED_DIRS` | `$HOME` | What goes into `ALLOWED_DIRECTORIES` |
 | `CSM_NO_TOKEN` | unset | Leave `AUTH_TOKEN` empty instead of generating one |
 
 If you already have the checkout, `install.sh` is the same thing without the cloning:
@@ -68,7 +68,7 @@ Then open `http://<machine>:3000/`. Over Tailscale that is your machine's Tailsc
 ## Update
 
 ```bash
-cd ~/Projektek/claude-session-manager
+cd ~/claude-session-manager
 ./deploy.sh             # git pull, rebuild, restart the service; tmux sessions keep running
 ```
 
@@ -82,7 +82,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | `HOST` | `0.0.0.0` | Bind address. Use your Tailscale IP to listen only there. |
 | `CLAUDE_COMMAND` | `claude` | Command typed into each new tmux session |
 | `SESSION_PREFIX` | `claude-` | Only tmux sessions with this prefix are shown and managed |
-| `ALLOWED_DIRECTORIES` | `~/Projektek` | Colon-separated roots; sessions can only be started inside these |
+| `ALLOWED_DIRECTORIES` | `$HOME` | Colon-separated roots; sessions can only be started inside these |
 | `AUTH_TOKEN` | empty | If set, every API and WebSocket request needs it (`X-Api-Key` header or `?token=`). The UI asks for it once and remembers it. |
 | `HISTORY_LINES` | `200` | Scrollback lines sent to the browser on connect |
 | `STALL_SECONDS` | `120` | A busy-looking session with no output for this long is shown as "May be stuck" |
@@ -162,7 +162,7 @@ deploy/                   systemd unit template
 
 - **Claude does not start in new sessions**: the service's PATH is set by `install.sh` from where `node`, `claude` and `tmux` were found at install time. If you move them, re-run `./install.sh`, or set `CLAUDE_COMMAND` to a full path.
 - **Sessions from my desktop terminal are missing**: only tmux sessions named `claude-...` (or your `SESSION_PREFIX`) on the same tmux server (default socket) can be opened. Check with `tmux ls`. A `claude` started in a plain terminal shows up under "Running outside tmux" but cannot be attached to; to carry it on from the phone, exit it, start a session in the same directory from the UI and run `/resume` in Claude.
-- **Start Claude in tmux from a desktop terminal** so it is manageable later: `tmux new -s claude-myproject -c ~/Projektek/myproject` then run `claude` inside.
+- **Start Claude in tmux from a desktop terminal** so it is manageable later: `tmux new -s claude-myproject -c ~/projects/myproject` then run `claude` inside.
 - **Terminal looks squashed after opening on the phone**: focus the desktop view again; `window-size latest` follows the last active client.
 
 ## Later ideas
