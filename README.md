@@ -147,6 +147,8 @@ npm run typecheck
 npm run build
 ```
 
+The service itself runs on Node 20.6+, but the test runner (vitest 5) needs Node 22+; on an older Node `npm install` prints an EBADENGINE warning and only `npm test` is affected.
+
 Layout:
 
 ```
