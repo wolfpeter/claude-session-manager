@@ -11,6 +11,23 @@ git pull --ff-only
 if [[ -f package-lock.json ]]; then npm ci --include=dev; else npm install --include=dev; fi
 npm run build
 
+# Every setting has a fallback, so a .env written by an older install keeps working - and a new
+# feature quietly stays off (CLAUDE_PROFILES missing is why the start-profile dropdown offers only
+# "Default"). List what is new instead of editing a file that holds this machine's token.
+if [[ -f .env && -f .env.example ]]; then
+  new_settings=()
+  while IFS= read -r line; do
+    grep -qE "^[[:space:]]*${line%%=*}=" .env || new_settings+=("$line")
+  done < <(grep -E '^[A-Z_]+=' .env.example)
+  if (( ${#new_settings[@]} > 0 )); then
+    echo
+    echo "Settings this .env does not have yet (their defaults are in use until you add them):"
+    printf '    %s\n' "${new_settings[@]}"
+    echo "  -> add the lines you want to .env, then run this script again."
+    echo
+  fi
+fi
+
 # Restarting a system service the obvious way - sudo systemctl restart - cannot work from the
 # update button: it runs this script in a tmux session inside the service's own cgroup, where
 # NoNewPrivileges=yes stops sudo from ever becoming root ("the no new privileges flag is set").

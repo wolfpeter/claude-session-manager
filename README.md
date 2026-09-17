@@ -79,6 +79,8 @@ cd ~/claude-session-manager
 
 Settings live in `.env` in the repo root (see `.env.example`). Environment variables override them.
 
+An update never rewrites `.env`, and every setting has a fallback, so a new one is simply off until you add it - a `.env` from before start profiles existed offers only the `Default` profile, for example. `deploy.sh` lists the lines your `.env` is missing after each build.
+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `31415` | HTTP port. Picked to stay clear of the usual 3000/8000/8080 crowd and of Linux's ephemeral range (32768-60999), so nothing else grabs it first. |
