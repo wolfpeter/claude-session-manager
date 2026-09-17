@@ -18,7 +18,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
 - URLs in the output are tappable and open in a new tab (login links from `gcloud auth login --no-launch-browser` and similar flows).
-- Copy button in the terminal: copies the selection when there is one, otherwise everything on the visible screen (the phone answer, where xterm has no touch selection). It falls back to the old `execCommand` route because `navigator.clipboard` does not exist over plain HTTP on a LAN or Tailscale address.
+- Copy on select in the terminal: let go of a drag and the text is already on the clipboard, the way a terminal emulator does it. A small copy button appears next to a selection and copies it again, for the rare case where the browser refuses the automatic one. Both fall back to the old `execCommand` route because `navigator.clipboard` does not exist over plain HTTP on a LAN or Tailscale address.
 - Stop button ends the tmux session only. Project files are never touched.
 - Update button in the list header: says whether the checkout is behind its remote, and starts `deploy.sh` in a tmux session you watch in the browser (see below).
 - Claude Code processes started in ordinary terminals (outside tmux) are listed too, read-only: the browser cannot attach to them, but you see where they run and for how long.

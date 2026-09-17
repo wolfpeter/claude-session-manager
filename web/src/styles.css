@@ -265,6 +265,8 @@ code { color: var(--mint); }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .copy-selection:hover { border-color: var(--fg-muted); }
+/* The selection is copied on its own; the button is the retry when the browser refused it. */
+.copy-selection.copy-failed { border-color: var(--rose); color: var(--rose); }
 /* Only shown while the pane has mouse reporting on, where a plain drag cannot select. */
 .copy-hint { font-size: 12px; color: var(--fg-muted); text-shadow: 0 1px 4px var(--bg-terminal); }
 
