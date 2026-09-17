@@ -39,7 +39,10 @@ log "node $(node --version), tmux $(tmux -V | cut -d' ' -f2)"
 
 # 2-4. dependencies + build ---------------------------------------------------------------------
 log "Installing dependencies"
-if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
+# --include=dev because the build needs vite and tsc: this runs with NODE_ENV=production
+# whenever it is started from the service (the update button's tmux session inherits it),
+# and npm would then skip every devDependency and fail with "vite: not found".
+if [[ -f package-lock.json ]]; then npm ci --include=dev; else npm install --include=dev; fi
 log "Building frontend and backend"
 npm run build
 

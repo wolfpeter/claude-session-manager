@@ -5,7 +5,10 @@ cd "$(dirname "$0")"
 SERVICE=claude-session-manager
 
 git pull --ff-only
-if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
+# --include=dev because the build needs vite and tsc: this runs with NODE_ENV=production
+# whenever it is started from the service (the update button's tmux session inherits it),
+# and npm would then skip every devDependency and fail with "vite: not found".
+if [[ -f package-lock.json ]]; then npm ci --include=dev; else npm install --include=dev; fi
 npm run build
 
 if systemctl --user list-unit-files "$SERVICE.service" 2>/dev/null | grep -q "$SERVICE"; then
