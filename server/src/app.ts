@@ -11,6 +11,7 @@ import { SessionService } from "./sessions.js";
 import { attachTerminal, clampSize } from "./terminal.js";
 import { isValidSessionId } from "./validate.js";
 import { listExternalClaudes } from "./external.js";
+import { listProjectDirectories } from "./projects.js";
 import { Updater } from "./updater.js";
 
 function tokenMatches(expected: string, given: unknown): boolean {
@@ -58,8 +59,8 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   app.get("/api/sessions", async () => sessions.list());
 
-  app.post<{ Body: { name?: unknown; workingDirectory?: unknown } }>("/api/sessions", async (req, reply) => {
-    const body = (req.body ?? {}) as { name?: unknown; workingDirectory?: unknown };
+  app.post<{ Body: { name?: unknown; workingDirectory?: unknown; profile?: unknown } }>("/api/sessions", async (req, reply) => {
+    const body = (req.body ?? {}) as { name?: unknown; workingDirectory?: unknown; profile?: unknown };
     const created = await sessions.create(body);
     return reply.code(201).send(created);
   });
@@ -81,9 +82,13 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   // watches the pull, the build, the sudo prompt and the restart of this very service.
   app.post("/api/update", async () => ({ id: await updater.start(tmux, updateSessionId) }));
 
+  // Read fresh on every call: the new-session form fills its folder dropdown from this, and a
+  // project cloned a minute ago should be in the list without restarting the service.
   app.get("/api/config", async () => ({
     hostname: os.hostname(),
     allowedDirectories: config.allowedDirectories,
+    projectDirectories: await listProjectDirectories(config.allowedDirectories),
+    profiles: config.claudeProfiles.map(({ id, label }) => ({ id, label })),
     sessionPrefix: config.sessionPrefix,
   }));
 

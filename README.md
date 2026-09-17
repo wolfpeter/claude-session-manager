@@ -14,7 +14,7 @@ Main use case: pick up the phone, open the page, see what the Claudes are doing,
 
 - Lists every tmux session whose name starts with `claude-` (also ones you created by hand).
 - Shows at a glance what each session is doing: working, needs you (question, permission request, folder trust), waiting for you, may be stuck, or shell only. Sessions that need an answer sort to the top and their count appears in the tab title, so the phone shows it without opening anything.
-- Starts a new session: creates the tmux session in the chosen project directory and runs `claude` in it.
+- Starts a new session: you pick the project folder from a dropdown (the subfolders of `ALLOWED_DIRECTORIES`, read fresh on every open, so nothing can be mistyped) and how Claude should start (the profiles from `CLAUDE_PROFILES`, e.g. plain or `--dangerously-skip-permissions`). Both choices are remembered for the next time. The tmux session is created in that folder and the profile's command is run in it.
 - Full interactive terminal in the browser: colours, arrows, Ctrl+C, resize; extra key bar on touch screens (Esc, Tab, Shift+Tab, arrows, Ctrl+C).
 - Automatic reconnect with the last 200 lines of scrollback, so you never return to an empty screen.
 - URLs in the output are tappable and open in a new tab (login links from `gcloud auth login --no-launch-browser` and similar flows).
@@ -83,7 +83,8 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
 | --- | --- | --- |
 | `PORT` | `31415` | HTTP port. Picked to stay clear of the usual 3000/8000/8080 crowd and of Linux's ephemeral range (32768-60999), so nothing else grabs it first. |
 | `HOST` | `0.0.0.0` | Bind address. Use your Tailscale IP to listen only there. |
-| `CLAUDE_COMMAND` | `claude` | Command typed into each new tmux session |
+| `CLAUDE_COMMAND` | `claude` | Command typed into each new tmux session. Used only when `CLAUDE_PROFILES` is empty. |
+| `CLAUDE_PROFILES` | empty | Start profiles offered in the new-session form: `Label=command\|Label=command`, e.g. `Default=claude\|Skip permissions=claude --dangerously-skip-permissions`. The first one is the default; only the first `=` of an entry separates label from command. Empty means one profile built from `CLAUDE_COMMAND`. |
 | `SESSION_PREFIX` | `claude-` | Only tmux sessions with this prefix are shown and managed |
 | `ALLOWED_DIRECTORIES` | `$HOME` | Colon-separated roots; sessions can only be started inside these |
 | `AUTH_TOKEN` | empty | If set, every API and WebSocket request needs it (`X-Api-Key` header or `?token=`). The UI asks for it once and remembers it. |
@@ -117,7 +118,7 @@ Settings live in `.env` in the repo root (see `.env.example`). Environment varia
   Both are in memory only, so after a backend restart every session starts counting from the restart.
 
   The classifier is a pure function over captured pane text; `server/test/status.test.ts` runs it against real captures in `server/test/fixtures/`. When a future Claude Code version changes its UI, re-capture a fixture (`tmux capture-pane -p -J -t '=claude-x:'`) and adjust the patterns there.
-- **Create**: `tmux new-session -d -s <id> -c <dir>` then `tmux send-keys -l "<CLAUDE_COMMAND>" Enter`. The id is a slug of the name (`API refactor` becomes `claude-api-refactor`, `-2`, `-3` on collisions). The status bar is turned off for these sessions to save a row on phones; run `tmux set -t <id> status on` to bring it back.
+- **Create**: `tmux new-session -d -s <id> -c <dir>` then `tmux send-keys -l "<the chosen profile's command>" Enter`. The id is a slug of the name (`API refactor` becomes `claude-api-refactor`, `-2`, `-3` on collisions). The status bar is turned off for these sessions to save a row on phones; run `tmux set -t <id> status on` to bring it back.
 - **Terminal**: each WebSocket spawns `tmux attach-session -t =<id>` inside a PTY (node-pty). Browser input goes to the PTY, PTY output goes back as binary frames. Resizes resize the PTY, tmux picks them up. The tmux server option `window-size latest` makes the window follow the most recently active client, so a phone does not shrink the desktop view.
 - **Reconnect**: the browser retries with backoff (and immediately when the tab becomes visible). On connect the server sends the tmux scrollback, then tmux redraws the visible screen.
 - **Scrollback on the phone**: browser clients attach with `TERM=tmux-256color`, and the server adds `tmux-256color:smcup@:rmcup@` to the tmux `terminal-overrides` option. Without the alternate screen, lines scrolling off the top stay in xterm.js scrollback, so swiping up in the terminal scrolls history (the page itself never scrolls, so no pull-to-refresh). Desktop tmux clients use a different TERM and are not affected.
@@ -194,7 +195,7 @@ deploy/                   systemd unit template
 
 ## Later ideas
 
-Push notification when a session starts waiting (the state is already known; only the delivery is missing), the pending question shown in the list, quick replies from the list, git branch info per session, rename, model and permission-mode selection when starting, HTTPS.
+Push notification when a session starts waiting (the state is already known; only the delivery is missing), the pending question shown in the list, quick replies from the list, git branch info per session, rename, HTTPS.
 
 ## License
 

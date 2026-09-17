@@ -31,6 +31,8 @@ export interface ClaudeSession {
 export interface CreateSessionRequest {
   name: string;
   workingDirectory: string;
+  /** Id of a configured start profile. Omitted means the first (default) one. */
+  profile?: string;
 }
 
 /** Browser -> server WebSocket messages (JSON text frames). Terminal output is sent as binary frames. */

@@ -2,7 +2,14 @@ import type { Config } from "./config.js";
 import { classifyPane, SessionWatch } from "./status.js";
 import type { Tmux, TmuxSessionInfo } from "./tmux.js";
 import type { ClaudeSession } from "./types.js";
-import { assertSessionId, slugify, validateName, validateWorkingDirectory, ValidationError } from "./validate.js";
+import {
+  assertSessionId,
+  slugify,
+  validateName,
+  validateProfile,
+  validateWorkingDirectory,
+  ValidationError,
+} from "./validate.js";
 
 const OPT_NAME = "@csm_name";
 
@@ -84,9 +91,10 @@ export class SessionService {
     return id;
   }
 
-  async create(input: { name?: unknown; workingDirectory?: unknown }): Promise<ClaudeSession> {
+  async create(input: { name?: unknown; workingDirectory?: unknown; profile?: unknown }): Promise<ClaudeSession> {
     const name = validateName(input.name);
     const cwd = await validateWorkingDirectory(input.workingDirectory, this.config.allowedDirectories);
+    const profile = validateProfile(input.profile, this.config.claudeProfiles);
     const slug = slugify(name);
     if (!slug) throw new ValidationError("name must contain at least one letter or digit");
     const id = await this.uniqueId(`${this.config.sessionPrefix}${slug}`);
@@ -97,12 +105,12 @@ export class SessionService {
       // The tmux status bar costs a row on a phone; Claude Code has its own status line anyway.
       await this.tmux.setSessionOption(id, "status", "off");
       await this.tmux.ensureServerOptions();
-      await this.tmux.sendCommand(id, this.config.claudeCommand);
+      await this.tmux.sendCommand(id, profile.command);
     } catch (err) {
       await this.tmux.killSession(id).catch(() => undefined);
       throw err;
     }
-    this.log.info({ id, name, cwd }, "session created");
+    this.log.info({ id, name, cwd, profile: profile.id }, "session created");
     return this.get(id);
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "./api";
-import type { ClaudeSession } from "./types";
+import { folderOptions, pickRemembered, type FolderOption } from "./folders";
+import type { ClaudeSession, StartProfile } from "./types";
 
 interface Props {
   onCancel: () => void;
@@ -9,24 +10,53 @@ interface Props {
 }
 
 const LAST_DIR_KEY = "csm_last_dir";
+const LAST_PROFILE_KEY = "csm_last_profile";
+
+function recall(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null; // private mode
+  }
+}
+
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode */
+  }
+}
 
 export function NewSessionForm({ onCancel, onCreated, onError }: Props) {
   const [name, setName] = useState("");
-  const [dir, setDir] = useState(() => localStorage.getItem(LAST_DIR_KEY) ?? "");
-  const [roots, setRoots] = useState<string[]>([]);
+  const [folders, setFolders] = useState<FolderOption[]>([]);
+  const [dir, setDir] = useState("");
+  const [profiles, setProfiles] = useState<StartProfile[]>([]);
+  const [profile, setProfile] = useState("");
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  // The folder list comes from the server (the subfolders of ALLOWED_DIRECTORIES), so a path that
+  // does not exist or is not allowed cannot be typed in by accident.
   useEffect(() => {
     nameRef.current?.focus();
     api
       .config()
       .then((c) => {
-        setRoots(c.allowedDirectories);
-        if (!dir && c.allowedDirectories.length === 1) setDir(c.allowedDirectories[0] + "/");
+        setFolders(folderOptions(c.projectDirectories));
+        setDir(pickRemembered(recall(LAST_DIR_KEY), c.projectDirectories));
+        setProfiles(c.profiles);
+        setProfile(pickRemembered(recall(LAST_PROFILE_KEY), c.profiles.map((p) => p.id)));
+        setLoading(false);
       })
-      .catch(onError);
+      .catch((err) => {
+        onError(err);
+        setError(err instanceof Error ? err.message : "Could not load the project folders");
+        setLoading(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -41,8 +71,9 @@ export function NewSessionForm({ onCancel, onCreated, onError }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const s = await api.create(name.trim(), dir.trim());
-      localStorage.setItem(LAST_DIR_KEY, dir.trim());
+      const s = await api.create(name.trim(), dir, profile);
+      remember(LAST_DIR_KEY, dir);
+      remember(LAST_PROFILE_KEY, profile);
       onCreated(s);
     } catch (err) {
       onError(err);
@@ -50,6 +81,8 @@ export function NewSessionForm({ onCancel, onCreated, onError }: Props) {
       setBusy(false);
     }
   };
+
+  const noFolders = !loading && folders.length === 0;
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
@@ -70,22 +103,29 @@ export function NewSessionForm({ onCancel, onCreated, onError }: Props) {
         </label>
 
         <label>
-          Working directory
-          <input
-            value={dir}
-            onChange={(e) => setDir(e.target.value)}
-            placeholder={roots[0] ? `${roots[0]}/my-project` : "/home/you/projects/my-project"}
-            required
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            inputMode="url"
-          />
-          {roots.length > 0 && (
-            <span className="hint">
-              Must be inside {roots.length === 1 ? roots[0] : roots.join(" or ")}
-            </span>
-          )}
+          Project folder
+          <select value={dir} onChange={(e) => setDir(e.target.value)} disabled={loading || noFolders} required>
+            {loading && <option value="">Loading…</option>}
+            {noFolders && <option value="">No project folder found</option>}
+            {folders.map((f) => (
+              <option key={f.path} value={f.path}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          {dir && <span className="hint">{dir}</span>}
+        </label>
+
+        <label>
+          Start with
+          <select value={profile} onChange={(e) => setProfile(e.target.value)} disabled={loading || profiles.length === 0}>
+            {loading && <option value="">Loading…</option>}
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         {error && <p className="notice notice-error">{error}</p>}
@@ -94,7 +134,7 @@ export function NewSessionForm({ onCancel, onCreated, onError }: Props) {
           <button type="button" className="btn" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary" disabled={busy || !name.trim() || !dir.trim()}>
+          <button type="submit" className="btn btn-primary" disabled={busy || loading || !name.trim() || !dir}>
             {busy ? "Starting…" : "Start Claude"}
           </button>
         </div>

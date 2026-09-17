@@ -31,7 +31,7 @@ body {
   overscroll-behavior: none;
 }
 
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
@@ -157,7 +157,7 @@ code { color: var(--mint); }
 }
 .modal h2 { margin: 0; font-size: 17px; font-weight: 600; }
 .modal label { display: flex; flex-direction: column; gap: 6px; color: var(--fg-muted); }
-.modal input {
+.modal input, .modal select {
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -165,7 +165,9 @@ code { color: var(--mint); }
   min-height: 44px;
   color: var(--fg);
 }
-.modal input:focus { border-color: var(--mint); outline: none; }
+.modal select { appearance: none; background-image: none; }
+.modal input:focus, .modal select:focus { border-color: var(--mint); outline: none; }
+.modal select:disabled { color: var(--fg-muted); }
 .hint { font-size: 12px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 

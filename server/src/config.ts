@@ -1,11 +1,22 @@
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_STALL_SECONDS } from "./status.js";
+import { slugify } from "./validate.js";
+
+/** One named way to start Claude, e.g. "Alap" -> `claude`. Chosen in the new-session form. */
+export interface ClaudeProfile {
+  /** Slug of the label; what the browser sends back. */
+  id: string;
+  label: string;
+  /** Shell command line run inside the fresh tmux session. */
+  command: string;
+}
 
 export interface Config {
   port: number;
   host: string;
-  claudeCommand: string;
+  /** Start profiles offered in the new-session form; the first one is the default. */
+  claudeProfiles: ClaudeProfile[];
   sessionPrefix: string;
   allowedDirectories: string[];
   authToken: string;
@@ -31,6 +42,34 @@ export interface Config {
   webDist: string;
 }
 
+/**
+ * CLAUDE_PROFILES is "Label=command|Label=command". Only the first "=" separates the two, so the
+ * command may set an environment variable. Unset (or empty) means a single profile built from
+ * CLAUDE_COMMAND, which is what older .env files have.
+ */
+function parseProfiles(env: NodeJS.ProcessEnv): ClaudeProfile[] {
+  const raw = (env.CLAUDE_PROFILES ?? "").trim();
+  if (!raw) return [{ id: "default", label: "Default", command: env.CLAUDE_COMMAND?.trim() || "claude" }];
+
+  const used = new Set<string>();
+  return raw
+    .split("|")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry, i) => {
+      const eq = entry.indexOf("=");
+      const label = eq < 0 ? "" : entry.slice(0, eq).trim();
+      const command = eq < 0 ? "" : entry.slice(eq + 1).trim();
+      if (!label || !command) {
+        throw new Error(`CLAUDE_PROFILES entry ${i + 1} must be "Label=command", got "${entry}"`);
+      }
+      let id = slugify(label);
+      if (!id || used.has(id)) id = `profile-${i + 1}`;
+      used.add(id);
+      return { id, label, command };
+    });
+}
+
 function int(value: string | undefined, fallback: number): number {
   const n = Number.parseInt(value ?? "", 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
@@ -54,7 +93,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: int(env.PORT, 31415),
     host: env.HOST ?? "0.0.0.0",
-    claudeCommand: env.CLAUDE_COMMAND ?? "claude",
+    claudeProfiles: parseProfiles(env),
     sessionPrefix,
     allowedDirectories: allowed,
     authToken: env.AUTH_TOKEN ?? "",

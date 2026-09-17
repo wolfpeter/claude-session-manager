@@ -18,9 +18,18 @@ export interface ClaudeSession {
   attached: number;
 }
 
+/** One configured way to start Claude (CLAUDE_PROFILES on the server). */
+export interface StartProfile {
+  id: string;
+  label: string;
+}
+
 export interface AppConfig {
   hostname: string;
   allowedDirectories: string[];
+  /** Direct subfolders of the allowed roots: exactly what the new-session form offers. */
+  projectDirectories: string[];
+  profiles: StartProfile[];
   sessionPrefix: string;
 }
 

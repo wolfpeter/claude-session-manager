@@ -29,7 +29,7 @@ function collect(ws: WebSocket, ms: number): Promise<string> {
 beforeAll(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "csm-app-"));
   const config: Config = {
-    port: 0, host: "127.0.0.1", claudeCommand: "cat", sessionPrefix: "claude-",
+    port: 0, host: "127.0.0.1", claudeProfiles: [{ id: "default", label: "Default", command: "cat" }], sessionPrefix: "claude-",
     allowedDirectories: [root], authToken: "secret", historyLines: 100, logLevel: "silent",
     tmuxSocket: socket, webDist: "", stallSeconds: 120,
     repoRoot: root, updateBranch: "main", updateCheckMinutes: 0,
@@ -53,6 +53,24 @@ describe("REST API", () => {
     expect((await fetch(`${base}/api/sessions`)).status).toBe(401);
     expect((await fetch(`${base}/api/sessions?token=wrong`)).status).toBe(401);
     expect((await fetch(`${base}/api/sessions?token=secret`)).status).toBe(200);
+  });
+
+  it("reports the project folders and start profiles the form offers", async () => {
+    await fs.mkdir(path.join(root, "proj-b"), { recursive: true });
+    await fs.mkdir(path.join(root, "proj-a"), { recursive: true });
+    await fs.mkdir(path.join(root, ".hidden"), { recursive: true });
+
+    const res = await fetch(`${base}/api/config`, { headers: A });
+    const cfg = (await res.json()) as {
+      projectDirectories: string[];
+      profiles: { id: string; label: string }[];
+    };
+    expect(cfg.projectDirectories).toEqual([path.join(root, "proj-a"), path.join(root, "proj-b")]);
+    expect(cfg.profiles).toEqual([{ id: "default", label: "Default" }]);
+
+    await fs.rm(path.join(root, "proj-a"), { recursive: true, force: true });
+    await fs.rm(path.join(root, "proj-b"), { recursive: true, force: true });
+    await fs.rm(path.join(root, ".hidden"), { recursive: true, force: true });
   });
 
   it("creates, lists, gets and deletes sessions with validation", async () => {

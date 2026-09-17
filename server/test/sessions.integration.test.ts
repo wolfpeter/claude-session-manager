@@ -17,7 +17,10 @@ beforeAll(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "csm-int-"));
   await fs.mkdir(path.join(root, "api"));
   config = {
-    port: 0, host: "127.0.0.1", claudeCommand: "echo hello-from-claude", sessionPrefix: "claude-",
+    port: 0, host: "127.0.0.1", claudeProfiles: [
+      { id: "default", label: "Default", command: "echo hello-from-claude" },
+      { id: "loud", label: "Loud", command: "echo hello-from-profile" },
+    ], sessionPrefix: "claude-",
     allowedDirectories: [root], authToken: "", historyLines: 50, logLevel: "silent", tmuxSocket: socket, webDist: "",
     stallSeconds: 120,
     repoRoot: root, updateBranch: "main", updateCheckMinutes: 0,
@@ -95,5 +98,17 @@ describe("SessionService with real tmux", () => {
     await expect(svc.create({ name: "x", workingDirectory: "/etc" })).rejects.toThrow(/outside/);
     await expect(svc.create({ name: "!!!", workingDirectory: root })).rejects.toThrow(/letter or digit/);
     await expect(svc.create({ name: "", workingDirectory: root })).rejects.toThrow(/required/);
+    await expect(svc.create({ name: "x", workingDirectory: root, profile: "nope" })).rejects.toThrow(/unknown start profile/);
+  });
+
+  it("runs the command of the chosen start profile", async () => {
+    const svc = new SessionService(tmux, config, silent);
+    await svc.create({ name: "Profiled", workingDirectory: root, profile: "loud" });
+    await new Promise((r) => setTimeout(r, 300));
+
+    const hist = await tmux.run(["capture-pane", "-p", "-t", "=claude-profiled:", "-S", "-50"]);
+    expect(hist).toContain("hello-from-profile");
+
+    await svc.remove("claude-profiled");
   });
 });

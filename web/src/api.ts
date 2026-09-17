@@ -41,8 +41,11 @@ export const api = {
   list: () => request<ClaudeSession[]>("/api/sessions"),
   external: () => request<ExternalClaude[]>("/api/external"),
   get: (id: string) => request<ClaudeSession>(`/api/sessions/${encodeURIComponent(id)}`),
-  create: (name: string, workingDirectory: string) =>
-    request<ClaudeSession>("/api/sessions", { method: "POST", body: JSON.stringify({ name, workingDirectory }) }),
+  create: (name: string, workingDirectory: string, profile: string) =>
+    request<ClaudeSession>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ name, workingDirectory, profile }),
+    }),
   remove: (id: string) => request<void>(`/api/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
   updateStatus: () => request<UpdateStatus>("/api/update"),
   startUpdate: () => request<{ id: string }>("/api/update", { method: "POST" }),

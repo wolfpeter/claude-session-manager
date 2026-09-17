@@ -44,6 +44,19 @@ export function validateName(name: unknown): string {
   return trimmed;
 }
 
+/**
+ * Picks the start profile the browser asked for. Missing means the first (default) profile, so an
+ * older client that does not know about profiles keeps working.
+ */
+export function validateProfile<T extends { id: string }>(value: unknown, profiles: T[]): T {
+  if (profiles.length === 0) throw new ValidationError("no start profile is configured");
+  if (value === undefined || value === null || value === "") return profiles[0];
+  if (typeof value !== "string") throw new ValidationError("profile must be a string");
+  const found = profiles.find((p) => p.id === value);
+  if (!found) throw new ValidationError(`unknown start profile "${value}"`);
+  return found;
+}
+
 function isInside(parent: string, child: string): boolean {
   const rel = path.relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
