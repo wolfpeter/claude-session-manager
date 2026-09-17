@@ -79,7 +79,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   app.get("/api/update", async () => updater.status());
 
   // Starts deploy.sh in a tmux session and hands back its id: the browser attaches to it and
-  // watches the pull, the build, the sudo prompt and the restart of this very service.
+  // watches the pull, the build and the restart of this very service.
   app.post("/api/update", async () => ({ id: await updater.start(tmux, updateSessionId) }));
 
   // Read fresh on every call: the new-session form fills its folder dropdown from this, and a

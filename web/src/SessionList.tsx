@@ -63,15 +63,15 @@ export function SessionList({ onOpen, onError }: Props) {
   }, [refresh]);
 
   // The update runs in a tmux session instead of in this process: it ends by restarting this very
-  // service, and the restart needs a password the service must not have. In a terminal you can
-  // watch it, answer the sudo prompt, and read the output across the restart.
+  // service, and a process cannot outlive its own restart. tmux can, so the output stays readable
+  // across it.
   const startUpdate = async () => {
     if (!update) return;
     const what = update.available
       ? `Pull ${update.behind} new commit${update.behind > 1 ? "s" : ""}, rebuild and restart the service?`
       : "Rebuild and restart the service? There is nothing new to pull.";
     const dirty = update.dirty ? "\n\nThis checkout has local changes, so the pull may refuse to run." : "";
-    if (!window.confirm(`${what}\n\nIt runs in a terminal you can watch; you may have to type your sudo password there.${dirty}`)) return;
+    if (!window.confirm(`${what}\n\nIt runs in a terminal you can watch, and the page reconnects after the restart.${dirty}`)) return;
     try {
       const { id } = await api.startUpdate();
       onOpen(id);

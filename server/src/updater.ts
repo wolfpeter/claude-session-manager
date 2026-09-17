@@ -27,11 +27,11 @@ const UNSUPPORTED: UpdateStatus = {
 /**
  * "Is there a new version, and run the update" for the checkout this app runs from.
  *
- * The update itself is not run by this process: it ends with restarting this very service, and
- * the restart needs a password this process must not have. Instead it starts `deploy.sh` in a
- * tmux session, which the browser attaches to like any other session - the output stays visible
- * across the restart (KillMode=process keeps tmux alive) and the sudo prompt is answered by a
- * person watching it.
+ * The update itself is not run by this process: it ends with restarting this very service, and a
+ * process cannot outlive its own restart. Instead it starts `deploy.sh` in a tmux session, which
+ * the browser attaches to like any other session - the output stays visible across the restart
+ * (KillMode=process keeps tmux alive). deploy.sh restarts the service by ending this process, so
+ * nothing on the way needs sudo, which NoNewPrivileges=yes would refuse anyway.
  */
 export class Updater {
   private lastCheck?: string;

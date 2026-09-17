@@ -135,10 +135,10 @@ Since a browser client gets nothing useful out of mouse reporting anyway, the se
 The update button starts `deploy.sh` in a tmux session and opens it, instead of running the update inside the service. That is not indirection for its own sake:
 
 - The update ends by restarting this very service. A process cannot outlive its own restart, but a tmux session can - `KillMode=process` keeps tmux running - so the output stays readable across it, and the browser reconnects on its own.
-- The restart needs a password, and the web-facing process must not have one. In a terminal a person answers the sudo prompt, which keeps a human check on "pull code from the internet and restart".
+- A process cannot restart itself, and it must not be able to sudo either: the unit sets `NoNewPrivileges=yes`, so `sudo` inside anything the service starts (this tmux session included) fails with "the no new privileges flag is set". `deploy.sh` therefore ends the running server instead of asking systemd to restart it - `Restart=always` starts the new build three seconds later, with no password anywhere.
 - If anything fails - a dirty checkout, a build error - you are looking at the terminal that says why.
 
-One caveat: if the machine reboots and the *service* is what starts the tmux server, that server inherits `NoNewPrivileges=yes` from the unit and `sudo` inside it cannot ask for a password at all. Starting tmux from a normal terminal once (or running the update from a desktop terminal) avoids it.
+The same script works from a normal terminal, where it takes the same route. A *user* service (`./install.sh --user`) never needed privileges and is restarted with `systemctl --user restart`.
 
 ## Security notes
 
